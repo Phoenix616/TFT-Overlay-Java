@@ -44,7 +44,6 @@ public class LoadingScreen extends JFrame {
         JPanel content = new JPanel();
         setContentPane(content);
         content.setOpaque(false);
-        setAlwaysOnTop(true);
         setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setUndecorated(true);
@@ -58,7 +57,7 @@ public class LoadingScreen extends JFrame {
         }
 
         content.add(textElement = new JLabel());
-        textElement.setPreferredSize(new Dimension(0, 120));
+        textElement.setPreferredSize(new Dimension(0, 413));
         textElement.setOpaque(true);
         textElement.setBackground(Overlay.HOVER_BACKGROUND);
         textElement.setForeground(new Color(158, 108, 54));
