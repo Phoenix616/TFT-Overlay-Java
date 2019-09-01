@@ -33,7 +33,7 @@ public class LabelButton extends JLabel {
 
         setForeground(Overlay.TEXT_COLOR);
         setBorder(Overlay.BUTTON_BORDER);
-        setBackground(Overlay.BACKGROUND_COLOR);
+        setBackground(Overlay.BACKGROUND);
         setOpaque(true);
 
         addMouseListener(new MouseAdapter() {
@@ -44,7 +44,7 @@ public class LabelButton extends JLabel {
 
             @Override
             public void mouseExited(MouseEvent e) {
-                setBackground(Overlay.BACKGROUND_COLOR);
+                setBackground(Overlay.BACKGROUND);
             }
 
             @Override

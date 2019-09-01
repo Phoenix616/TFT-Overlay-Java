@@ -28,12 +28,12 @@ import de.themoep.tftoverlay.elements.LabelButton;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
-import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.SwingConstants;
 import javax.swing.ToolTipManager;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
@@ -48,6 +48,7 @@ import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -55,14 +56,23 @@ import java.util.stream.Collectors;
 public class Overlay extends JFrame {
 
     public static final boolean PBE = false;
-    public static final Color BACKGROUND_COLOR = new Color(10, 10, 10);
+
+    public static final Font FONT = new Font("Dialog", Font.PLAIN, 12);
+    public static final Font HUGE_FONT = new Font("Dialog", Font.BOLD, 28);
+    public static final Color BACKGROUND = new Color(10, 10, 10);
+    public static final Color HOVER_BACKGROUND = new Color(10, 10, 10, 200);
     public static final Color TEXT_COLOR = new Color(230, 198, 123);
     public static final Border COLORED_BORDER = BorderFactory.createLineBorder(new Color(117, 87, 41));
     public static final Border BORDER = BorderFactory.createCompoundBorder(COLORED_BORDER, BorderFactory.createEmptyBorder(5, 5, 5, 5));
     public static final Border BUTTON_BORDER = BorderFactory.createCompoundBorder(BORDER, new EmptyBorder(0, 5, 0, 5));
 
+    public static final int ICON_SIZE = 42;
+    private final TftOverlay main;
+
     public Overlay(TftOverlay main) {
         super(main.getName() + " v" + main.getVersion());
+
+        this.main = main;
 
         JPanel content = new JPanel();
         setContentPane(content);
@@ -75,33 +85,37 @@ public class Overlay extends JFrame {
         setUndecorated(true);
         setBackground(new Color(0, 0, 0, 0));
 
-        Font font = new Font("Dialog", Font.PLAIN, 12);
-        UIManager.put("TabbedPane.font", font);
-        UIManager.put("ToolTip.background", new ColorUIResource(BACKGROUND_COLOR));
+        UIManager.put("TabbedPane.font", FONT);
+        UIManager.put("ToolTip.background", new ColorUIResource(BACKGROUND));
         UIManager.put("ToolTip.border", BORDER);
         UIManager.put("ToolTip.foreground", TEXT_COLOR);
         UIManager.put("ToolTip.width", 100);
         ToolTipManager.sharedInstance().setInitialDelay(0);
 
-        JPanel itemCombinationContainer = new JPanel();
+        // --- Main Panel ---
 
-        JPanel items = new JPanel();
-        items.setLayout(new FlowLayout(FlowLayout.LEADING));
-        items.setBackground(new Color(0, 0, 0, 0));
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+
+        JPanel mainPopupContainer = new JPanel();
+
+        // --- Items ---
+
+        JPanel mainPanelHeader = new JPanel();
+        mainPanelHeader.setLayout(new FlowLayout(FlowLayout.LEADING));
+        mainPanelHeader.setBackground(new Color(0, 0, 0, 0));
         for (TftItem item : main.getProvider().getItems().values()) {
             if (item.getIngredients().isEmpty()) {
-                JLabel itemLabel = new JLabel("", new ImageIcon(main.getImage(item.getIconUrl(), 42, 42)), JLabel.CENTER);
-                //itemLabel.setToolTipText(main.getLang("item-hover",
-                //        "name", item.getName(),
-                //        "champions", breakLine(item.getChampions().stream().map(TftChampion::getName).collect(Collectors.joining(", "))),
-                //        "desc", breakLine(item.getDescription()),
-                //        "ingredient", breakLine(item.getIngredient().stream().map(TftItem::getName).collect(Collectors.joining(", "))),
-                //        "ingredients", item.getIngredients().stream().map(TftItem::getName).collect(Collectors.joining(", "))
-                //));
+                JLabel itemLabel = new JLabel("", new ImageIcon(main.getImage(item.getIconUrl(), ICON_SIZE, ICON_SIZE)), JLabel.CENTER);
+                itemLabel.setBorder(COLORED_BORDER);
+
+                JPanel itemCombinationsContainer = new JPanel();
+                itemCombinationsContainer.setVisible(false);
 
                 JPanel itemCombinations = new JPanel();
                 itemCombinations.setLayout(new BoxLayout(itemCombinations, BoxLayout.Y_AXIS));
-                itemCombinations.setBackground(new Color(0, 0, 0, 200));
+                itemCombinations.setBackground(HOVER_BACKGROUND);
+                itemCombinations.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 10));
 
                 JPanel line = new JPanel();
                 line.setLayout(new FlowLayout(FlowLayout.LEADING));
@@ -109,7 +123,7 @@ public class Overlay extends JFrame {
                         "name", item.getName(),
                         "desc", breakLine(item.getDescription()),
                         "ingredient", breakLine(item.getIngredient().stream().map(TftItem::getName).collect(Collectors.joining(", ")))
-                ), new ImageIcon(main.getImage(item.getIconUrl(), 42, 42)), JLabel.LEADING));
+                ), new ImageIcon(main.getImage(item.getIconUrl(), ICON_SIZE, ICON_SIZE)), JLabel.LEADING));
                 addChild(itemCombinations, line);
 
                 for (TftItem combinedItem : item.getIngredient()) {
@@ -117,17 +131,16 @@ public class Overlay extends JFrame {
                     combLine.setLayout(new FlowLayout(FlowLayout.LEADING));
                     combLine.setLayout(new BoxLayout(combLine, BoxLayout.X_AXIS));
 
-                    Font hugeFont = new Font("Dialog", Font.BOLD, 28);
                     JLabel plus = new JLabel(" + ");
                     plus.setForeground(TEXT_COLOR);
-                    plus.setFont(hugeFont);
+                    plus.setFont(HUGE_FONT);
                     combLine.add(plus);
 
-                    combLine.add(new JLabel(new ImageIcon(main.getImage(combinedItem.getOtherIngredient(item).getIconUrl(), 42, 42))));
+                    combLine.add(new JLabel(new ImageIcon(main.getImage(combinedItem.getOtherIngredient(item).getIconUrl(), ICON_SIZE, ICON_SIZE))));
 
                     JLabel arrow = new JLabel(" > ");
                     arrow.setForeground(TEXT_COLOR);
-                    arrow.setFont(hugeFont);
+                    arrow.setFont(HUGE_FONT);
                     combLine.add(arrow);
 
                     JLabel combinedLabel = new JLabel(main.getLang("item-info-combined",
@@ -135,31 +148,43 @@ public class Overlay extends JFrame {
                             "champions", breakLine(combinedItem.getChampions().stream().map(TftChampion::getName).collect(Collectors.joining(", "))),
                             "desc", breakLine(combinedItem.getDescription()),
                             "ingredients", item.getIngredients().stream().map(TftItem::getName).collect(Collectors.joining(", "))
-                    ), new ImageIcon(main.getImage(combinedItem.getIconUrl(), 42, 42)), JLabel.LEADING);
-                    combinedLabel.setFont(font);
+                    ), new ImageIcon(main.getImage(combinedItem.getIconUrl(), ICON_SIZE, ICON_SIZE)), JLabel.LEADING);
+                    combinedLabel.setFont(FONT);
                     combLine.add(combinedLabel);
                     addChild(itemCombinations, combLine);
                 }
-                itemCombinations.setVisible(false);
-                itemCombinations.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-                itemCombinationContainer.add(itemCombinations);
+
+                itemCombinationsContainer.add(itemCombinations);
+
+                addChild(mainPopupContainer, itemCombinationsContainer);
 
                 itemLabel.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mouseEntered(MouseEvent e) {
-                        itemCombinations.setVisible(true);
+                        itemCombinationsContainer.setVisible(true);
+                        itemCombinationsContainer.setBorder(BorderFactory.createEmptyBorder(0, itemLabel.getX() - 10, 0, 0));
                         pack();
                     }
 
                     @Override
                     public void mouseExited(MouseEvent e) {
-                        itemCombinations.setVisible(false);
+                        itemCombinationsContainer.setVisible(false);
                         pack();
                     }
                 });
-                items.add(itemLabel);
+                mainPanelHeader.add(itemLabel);
             }
         }
+
+        // -- Synergies --
+
+        addSynergyPopup(mainPanelHeader, mainPopupContainer, main.getProvider().getClasses().values(), "C", "class");
+        addSynergyPopup(mainPanelHeader, mainPopupContainer, main.getProvider().getOrigins().values(), "O", "origin");
+
+        addChild(mainPanel, mainPanelHeader);
+        addChild(mainPanel, mainPopupContainer);
+
+        // -- Champions panel --
 
         JPanel champions = new JPanel();
         champions.setLayout(new GridLayout(main.getProvider().getOrigins().size() + 1, main.getProvider().getClasses().size() + 1));
@@ -240,6 +265,8 @@ public class Overlay extends JFrame {
             }
         }
 
+        // --- Title Bar ---
+
         JPanel titleBar = new JPanel();
         titleBar.setLayout(new FlowLayout(FlowLayout.LEADING));
 
@@ -251,7 +278,7 @@ public class Overlay extends JFrame {
             public void mouseClicked(MouseEvent e) {
                 if (e.getButton() == MouseEvent.BUTTON3) {
                     JPopupMenu menu = new JPopupMenu("menu");
-                    menu.setBackground(BACKGROUND_COLOR);
+                    menu.setBackground(BACKGROUND);
                     menu.setBorder(COLORED_BORDER);
                     menu.setLayout(new GridLayout(0, 1));
                     for (String s : main.getLang("credits", "version", main.getVersion().split(" ")[0]).split("\n")) {
@@ -270,27 +297,134 @@ public class Overlay extends JFrame {
         });
         titleBar.add(menuElement);
 
-        titleBar.add(new LabelButton(main.getLang("items"), e -> {
+        titleBar.add(new LabelButton(main.getLang("main"), e -> {
             champions.setVisible(false);
-            items.setVisible(true);
-            itemCombinationContainer.setVisible(true);
+            mainPanel.setVisible(true);
             pack();
         }));
 
         titleBar.add(new LabelButton(main.getLang("champions"), e -> {
             champions.setVisible(true);
-            items.setVisible(false);
-            itemCombinationContainer.setVisible(false);
+            mainPanel.setVisible(false);
             pack();
         }));
 
         addChild(content, titleBar);
+
+        addChild(content, mainPanel);
+
         champions.setVisible(false);
         content.add(champions);
-        content.add(items);
-        addChild(content, itemCombinationContainer);
 
         pack();
+    }
+
+    private void addSynergyPopup(JPanel mainPanelHeader, JPanel mainPopupContainer, Collection<? extends TftSynergy> synergies, String iconChar, String key) {
+        JLabel synergyLabel = new JLabel(iconChar);
+        synergyLabel.setForeground(TEXT_COLOR);
+        synergyLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        synergyLabel.setPreferredSize(new Dimension(ICON_SIZE, ICON_SIZE));
+        synergyLabel.setFont(HUGE_FONT);
+        synergyLabel.setBorder(BORDER);
+        synergyLabel.setOpaque(true);
+        synergyLabel.setBackground(BACKGROUND);
+
+        JPanel synergiesPopupContainer = new JPanel();
+        synergiesPopupContainer.setVisible(false);
+
+        JPanel synergiesPopup = new JPanel();
+        synergiesPopup.setLayout(new BoxLayout(synergiesPopup, BoxLayout.Y_AXIS));
+        synergiesPopup.setBackground(HOVER_BACKGROUND);
+        synergiesPopup.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 10));
+
+        for (TftSynergy synergy : synergies) {
+            JPanel synergyPanel = new JPanel();
+            synergyPanel.setLayout(new BoxLayout(synergyPanel, BoxLayout.X_AXIS));
+            synergyPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(36, 36, 36)));
+
+            List<TftChampion> championList = synergy.getChampions().stream()
+                    .filter(c -> !c.isPbe() || PBE)
+                    .sorted(Comparator.comparingInt(TftChampion::getCost))
+                    .collect(Collectors.toList());
+
+
+            JLabel infoLabel = new JLabel(breakLine(main.getLang(key + "-info",
+                    "name", synergy.getName(),
+                    "desc", synergy.getDescription() + (!synergy.getDescription().isEmpty() && !synergy.getEffects().isEmpty() ? "<br>" : ""),
+                    "effects", synergy.getEffects(),
+                    "champions", synergy.getChampions().stream().map(TftChampion::getName).collect(Collectors.joining(", ")),
+                    "champion-count", String.valueOf(championList.size())
+            )), new ImageIcon(main.getImage(synergy.getIconUrl(), 24, 24)), JLabel.LEADING);
+            infoLabel.setHorizontalAlignment(SwingConstants.LEADING);
+            synergyPanel.add(infoLabel);
+            infoLabel.setFont(FONT);
+
+            JPanel champPanelContainer = new JPanel();
+            JPanel champPanel = new JPanel();
+            champPanel.setLayout(new GridLayout(championList.size() > 3 ? 2 : 1, 0));
+            for (TftChampion champion : championList) {
+                JLabel championLabel = new JLabel("", new ImageIcon(main.getImage(champion.getIconUrl(), 24, 24)), JLabel.CENTER);
+                championLabel.setToolTipText(main.getLang("champion-hover",
+                        "name", champion.getName(),
+                        "synergies", breakLine(champion.getSynergies().stream()
+                                .map(TftSynergy::getName).collect(Collectors.joining(", "))),
+                        "iconUrl", champion.getIconUrl().toExternalForm(),
+                        "cost", String.valueOf(champion.getCost()),
+                        "damage", champion.getDamage(),
+                        "dps", champion.getDps(),
+                        "health", champion.getHealth(),
+                        "armor", String.valueOf(champion.getArmor()),
+                        "magicresistance", String.valueOf(champion.getMagicResistance()),
+                        "range", String.valueOf(champion.getRange()),
+                        "speed", String.valueOf(champion.getSpeed()),
+                        "items", breakLine(champion.getRecommendedItems().stream()
+                                .map(TftItem::getName).collect(Collectors.joining(", "))),
+                        "spell-name", champion.getSpell().getName(),
+                        "spell-desc", breakLine(champion.getSpell().getDescription()),
+                        "spell-effect", breakLine(champion.getSpell().getEffect()),
+                        "spell-mana", champion.getSpell().getMana(),
+                        "spell-type", champion.getSpell().getType()
+                ));
+                championLabel.setBorder(BorderFactory.createLineBorder(champion.getColor()));
+                champPanel.add(championLabel);
+            }
+            addChild(champPanelContainer, champPanel);
+            addChild(synergyPanel, champPanelContainer);
+
+            addChild(synergiesPopup, synergyPanel);
+        }
+        synergiesPopupContainer.add(synergiesPopup);
+        addChild(mainPopupContainer, synergiesPopupContainer);
+
+        synergyLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                synergiesPopupContainer.setVisible(true);
+                synergiesPopupContainer.setBorder(BorderFactory.createEmptyBorder(0, synergyLabel.getX() - 10, 0, 0));
+                pack();
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                if (synergyLabel.getHeight() + 1 > e.getY()) {
+                    synergiesPopupContainer.setVisible(false);
+                    pack();
+                }
+            }
+        });
+        synergiesPopup.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseExited(MouseEvent e) {
+                if (e.getX() > 0 && e.getX() < synergiesPopup.getWidth()
+                        && e.getY() > 0 && e.getY() < synergiesPopup.getHeight()) {
+                    return;
+                }
+                synergiesPopupContainer.setVisible(false);
+                pack();
+            }
+        });
+
+        mainPanelHeader.add(synergyLabel);
     }
 
     private String breakLine(String string) {
@@ -302,7 +436,25 @@ public class Overlay extends JFrame {
         StringBuilder sb = new StringBuilder(parts[0]);
         int lineLength = parts[0].length();
         for (int i = 1; i < parts.length; i++) {
-            if (lineLength + parts[i].length() < length) {
+            if (parts[i].endsWith("<br>") || parts[i].endsWith("<p") || parts[i].endsWith("</p>")) {
+                sb.append(" ");
+                lineLength = 0;
+            } else if (parts[i].startsWith("<br>") || parts[i].startsWith("<p") || parts[i].startsWith("</p>")) {
+                sb.append(" ");
+                lineLength = parts[i].length() - 4;
+            } else if (parts[i].contains("<br>") || parts[i].contains("<p") || parts[i].contains("</p>")) {
+                sb.append(" ");
+                int index = parts[i].lastIndexOf("<br>");
+                if (index < 0) {
+                    index = parts[i].lastIndexOf("<p");
+                }
+                if (index < 0) {
+                    index = parts[i].lastIndexOf("</p>");
+                }
+                if (index >= 0) {
+                    lineLength = parts[i].length() - index - 4;
+                }
+            } else if (lineLength + parts[i].length() < length) {
                 sb.append(" ");
                 lineLength += parts[i].length() + 1;
             } else {
