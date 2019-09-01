@@ -1,7 +1,7 @@
 package de.themoep.tftoverlay.elements;
 
 /*
- * TFT-Overlay - tftoverlay - $project.description
+ * TFT-Overlay - TFT-Overlay-Java
  * Copyright (c) 2019 Max Lee aka Phoenix616 (mail@moep.tv)
  *
  * This program is free software: you can redistribute it and/or modify

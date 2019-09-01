@@ -1,7 +1,7 @@
 package de.themoep.tftoverlay.windows;
 
 /*
- * TFT-Overlay - tftoverlay - $project.description
+ * TFT-Overlay - TFT-Overlay-Java
  * Copyright (c) 2019 Max Lee aka Phoenix616 (mail@moep.tv)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,10 +20,17 @@ package de.themoep.tftoverlay.windows;
 
 import de.themoep.tftoverlay.TftOverlay;
 
+import javax.imageio.ImageIO;
+import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.HeadlessException;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 
 public class LoadingScreen extends JFrame {
     private final JLabel textElement;
@@ -31,11 +38,32 @@ public class LoadingScreen extends JFrame {
 
     public LoadingScreen(TftOverlay main) throws HeadlessException {
         super(main.getName() + " v" + main.getVersion() + " is loading...");
+        setIconImage(main.getIcon());
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(new Dimension(400, 200));
-        textElement = new JLabel();
-        setText(main.getName() + " is loading...");
-        add(textElement);
+
+        JPanel content = new JPanel();
+        setContentPane(content);
+        content.setOpaque(false);
+        setAlwaysOnTop(true);
+        setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setUndecorated(true);
+        setBackground(new Color(0, 0, 0, 0));
+
+        try {
+            BufferedImage logoImage = ImageIO.read(main.getResourceAsStream("images/TFT-Overlay-Logo.png"));
+            content.add(new JLabel(new ImageIcon(logoImage)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        content.add(textElement = new JLabel());
+        textElement.setPreferredSize(new Dimension(0, 120));
+        textElement.setOpaque(true);
+        textElement.setBackground(Overlay.HOVER_BACKGROUND);
+        textElement.setForeground(new Color(158, 108, 54));
+        textElement.setBorder(Overlay.BORDER);
+        setText(main.getName() + " " + main.getVersion() + " is loading...");
     }
 
     public void addLine(String line) {
@@ -45,6 +73,7 @@ public class LoadingScreen extends JFrame {
     public void setText(String text) {
         this.text = text;
         textElement.setText("<html>" + text.replace("\n", "<br>") + "</html>)");
+        pack();
     }
 
     public String getText() {

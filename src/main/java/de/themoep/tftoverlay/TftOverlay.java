@@ -64,6 +64,7 @@ public class TftOverlay implements Languaged {
     private DataProvider provider;
     private LanguageManager lang;
     private File cacheFolder;
+    private BufferedImage icon;
 
     public static void main(String[] args) {
         try {
@@ -89,12 +90,18 @@ public class TftOverlay implements Languaged {
 
     private TftOverlay() {
         try {
-            InputStream s = TftOverlay.class.getClassLoader().getResourceAsStream("app.properties");
+            InputStream s = getResourceAsStream("app.properties");
             properties.load(s);
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(1);
             return;
+        }
+
+        try {
+            icon = ImageIO.read(getResourceAsStream("images/TFT-Overlay-Icon.png"));
+        } catch (IOException e) {
+            icon = null;
         }
 
         cacheFolder = new File(getDataFolder(), "cache");

@@ -31,6 +31,8 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.stream.Collectors;
@@ -46,6 +48,7 @@ public class CachedDataProvider extends DataProvider {
     }
 
     private void load() throws IOException {
+        Map<TftItem, String> ingredients = new HashMap<>();
         Files.newDirectoryStream(new File(cacheFolder, "items").toPath()).forEach(path -> {
             if (!path.toFile().isFile()) {
                 return;
@@ -59,27 +62,22 @@ public class CachedDataProvider extends DataProvider {
                         new URL(props.getProperty("iconUrl")),
                         props.getProperty("description")
                 );
-                for (String s : props.getProperty("ingredients").split(",")) {
-                    s = cleanUp(s);
-                    TftItem ingredient = getItems().get(s);
-                    if (ingredient != null) {
-                        item.getIngredients().add(ingredient);
-                        ingredient.getIngredient().add(item);
-                    }
-                }
-                for (String s : props.getProperty("ingredient").split(",")) {
-                    s = cleanUp(s);
-                    TftItem ingredientTo = getItems().get(s);
-                    if (ingredientTo != null) {
-                        item.getIngredient().add(ingredientTo);
-                        ingredientTo.getIngredients().add(item);
-                    }
-                }
+                ingredients.put(item, props.getProperty("ingredients"));
                 add(item);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         });
+        for (Map.Entry<TftItem, String> entry : ingredients.entrySet()) {
+            for (String s : entry.getValue().split(",")) {
+                s = cleanUp(s);
+                TftItem ingredient = getItems().get(s);
+                if (ingredient != null) {
+                    entry.getKey().getIngredients().add(ingredient);
+                    ingredient.getIngredient().add(entry.getKey());
+                }
+            }
+        }
         Files.newDirectoryStream(new File(cacheFolder, "origins").toPath()).forEach(path -> {
             if (!path.toFile().isFile()) {
                 return;
