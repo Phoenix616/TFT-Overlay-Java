@@ -493,7 +493,7 @@ public class Overlay extends JFrame {
 
     private String addHilights(String text) {
         return text.replaceAll("\\((\\d+)\\)", "<font color=\"#E69A2E\">($1)</font>")
-                .replaceAll("( \\d+ |\\d+%|\\+\\d+|\\d+(st|nd|rd|th|s| ?seconds))", "<font color=\"#FFFFFF\">$1</font>")
+                .replaceAll("((\\+| )\\d+(%|st|nd|rd|th|s| ?seconds| |))", "<font color=\"#FFFFFF\">$1</font>")
                 .replaceAll("([Hh]ealth( Point(s?)|)|HP|heal(ing|)|Armor)", " <font color=\"#9AE62E\">$1</font>")
                 .replaceAll("([Mm]ana|Spell Power|magical damage)", " <font color=\"#2EA7E6\">$1</font>")
                 .replaceAll("([Aa]ttack( Speed| Range|s|)|AS|[Dd]amage)", " <font color=\"#E6482E\">$1</font>");
@@ -540,7 +540,7 @@ public class Overlay extends JFrame {
                         .map(TftItem::getName).collect(Collectors.joining(", ")),
                 "items-with-icons", champion.getRecommendedItems().stream()
                         .map(i -> "<br><img src=\"file:/" + main.getCachedImageFile(i.getIconUrl(), 24, 24).getAbsolutePath() + "\">"
-                                + "&nbsp" + i.getName()).collect(Collectors.joining("")),
+                                + "&nbsp;" + i.getName()).collect(Collectors.joining("")),
                 "spell-name", champion.getSpell().getName(),
                 "spell-desc", addHilights(champion.getSpell().getDescription()),
                 "spell-effect", addHilights(champion.getSpell().getEffect()),
