@@ -4,7 +4,7 @@ Java overlay program for League of Legends' Teamfight Tactics.
 
 Only works in **windowed** or **borderless** fullscreen mode of LoL!
 
-![Overlay](https://i.moep.tv/m9XPOWE1.png)
+![Overlay](https://i.moep.tv/Jq3uwiX.gif)
 
 ## Features
 
@@ -12,10 +12,12 @@ Only works in **windowed** or **borderless** fullscreen mode of LoL!
 - Item builder
 - Classes and origins overview and chart
 - Auto patch updates
+- Information hilights
 
 ## Planed Features
 
 - Team builder based on item recommendations
+- Champion and Item search
 
 ## Downloads
 
@@ -25,12 +27,12 @@ The Overlay requires at least Java 8 to run.
 
 ## More images
 
-![Item combination](https://i.moep.tv/q8Cx1lBV.png)
-![Item builder](https://i.moep.tv/kc90ybtv.png)
+![Item combination](https://i.moep.tv/qvcGIwGL.png)
+![Item builder](https://i.moep.tv/mfi0PZMx.png)
 ![Champions overview](https://i.moep.tv/WtzMoCx.png)
-![Champion details](https://i.moep.tv/pjstAEXV.png)
-![Classes overview](https://i.moep.tv/eDl4Rzln.png)
-![Origins overview](https://i.moep.tv/jKfsPbEx.png)
+![Champion details](https://i.moep.tv/j6uHvnUD.png)
+![Classes overview](https://i.moep.tv/brWOBARv.png)
+![Origins overview](https://i.moep.tv/gYdIhy4D.png)
 
 ## License
 

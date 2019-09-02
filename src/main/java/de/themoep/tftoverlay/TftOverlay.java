@@ -224,10 +224,33 @@ public class TftOverlay implements Languaged {
         return lang.getConfig(USER).get(key, replacements);
     }
 
+    public File getCachedImageFile(URL url) {
+        return new File(new File(cacheFolder, "images"), hash(url.toString()) + ".png");
+    }
+
+    public File getCachedImageFile(URL url, int width, int height) {
+        File imageCacheFolder = new File(cacheFolder, "images");
+        File scaledImageFile = new File(imageCacheFolder, hash(url.toString()) + "-" + width + "-" + height + ".png");
+
+        if (!scaledImageFile.exists() && imageCacheFolder.exists()) {
+            File imageFile = getCachedImageFile(url);
+            if (imageFile.exists()) {
+                try {
+                    BufferedImage image = ImageIO.read(imageFile);
+                    image = Scalr.resize(image, width, height);
+                    ImageIO.write(image, "png", scaledImageFile);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return scaledImageFile;
+    }
+
     public Image getImage(URL url, int width, int height) {
         File imageCacheFolder = new File(cacheFolder, "images");
         File scaledImageFile = new File(imageCacheFolder, hash(url.toString()) + "-" + width + "-" + height + ".png");
-        File imageFile = new File(imageCacheFolder, hash(url.toString()) + ".png");
+        File imageFile = getCachedImageFile(url);
         BufferedImage image = null;
         if (imageCacheFolder.exists()) {
             if (scaledImageFile.exists()) {
