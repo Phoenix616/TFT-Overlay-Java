@@ -18,6 +18,7 @@ package de.themoep.tftoverlay.elements;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import de.themoep.tftoverlay.TftOverlay;
 import de.themoep.tftoverlay.windows.Overlay;
 
 import javax.swing.JLabel;
@@ -28,18 +29,19 @@ import java.util.function.Consumer;
 
 public class LabelButton extends JLabel {
 
-    public LabelButton(String text, Consumer<MouseEvent> action) {
+    public LabelButton(TftOverlay main, String text, Consumer<MouseEvent> action) {
         super(text);
 
         setForeground(Overlay.TEXT_COLOR);
         setBorder(Overlay.BUTTON_BORDER);
         setBackground(Overlay.BACKGROUND);
         setOpaque(true);
+        setCursor(main.getCursorClick());
 
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                setBackground(new Color(41, 41, 41));
+                setBackground(Overlay.GRID_COLOR);
             }
 
             @Override

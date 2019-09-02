@@ -16,7 +16,8 @@ package de.themoep.tftoverlay.windows;
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+import com.google.common.collect.Multimap;
+import com.google.common.collect.MultimapBuilder;
 import de.themoep.tftoverlay.TftOverlay;
 import de.themoep.tftoverlay.data.TftChampion;
 import de.themoep.tftoverlay.data.TftClass;
@@ -43,17 +44,24 @@ import javax.swing.UIManager;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.ColorUIResource;
+import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Composite;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.Point;
+import java.awt.color.ColorSpace;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorConvertOp;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -70,6 +78,7 @@ public class Overlay extends JFrame {
     public static final Font HUGE_FONT = FONT.deriveFont(Font.BOLD, 28);
     public static final Color BACKGROUND = new Color(10, 10, 10);
     public static final Color HOVER_BACKGROUND = new Color(10, 10, 10, 200);
+    public static final Color GRID_COLOR = new Color(36, 36, 36);
     public static final Color TEXT_COLOR = new Color(230, 198, 123);
     public static final Color SECONDARY_TEXT_COLOR = new Color(230, 216, 183);
     public static final Border COLORED_BORDER = BorderFactory.createLineBorder(new Color(117, 87, 41));
@@ -88,6 +97,8 @@ public class Overlay extends JFrame {
         this.main = main;
         setIconImage(main.getIcon());
 
+        setCursor(main.getCursor());
+
         JPanel content = new JPanel();
         setContentPane(content);
         content.setFont(FONT);
@@ -101,8 +112,10 @@ public class Overlay extends JFrame {
 
         UIManager.put("TabbedPane.font", FONT);
         UIManager.put("ToolTip.background", new ColorUIResource(BACKGROUND));
+        UIManager.put("ToolTip.backgroundInactive", new ColorUIResource(BACKGROUND));
         UIManager.put("ToolTip.border", BORDER);
         UIManager.put("ToolTip.foreground", TEXT_COLOR);
+        UIManager.put("ToolTip.foregroundInactive", new ColorUIResource(BACKGROUND));
         UIManager.put("ToolTip.width", 100);
         ToolTipManager.sharedInstance().setInitialDelay(0);
 
@@ -129,6 +142,7 @@ public class Overlay extends JFrame {
             public void mouseClicked(MouseEvent e) {
                 if (e.getButton() == MouseEvent.BUTTON3) {
                     JPopupMenu menu = new JPopupMenu("menu");
+                    menu.setCursor(main.getCursor());
                     menu.setBackground(BACKGROUND);
                     menu.setBorder(COLORED_BORDER);
                     menu.setLayout(new GridLayout(0, 1));
@@ -140,7 +154,7 @@ public class Overlay extends JFrame {
                         credits.setForeground(TEXT_COLOR);
                     }
 
-                    menu.add(new LabelButton(main.getLang("close"), e1 -> System.exit(1)));
+                    menu.add(new LabelButton(main, main.getLang("close"), e1 -> System.exit(1)));
                     menu.pack();
                     menu.show(menuElement, 10, 0);
                 }
@@ -176,7 +190,7 @@ public class Overlay extends JFrame {
         JPanel cornerCell = new JPanel() {
             @Override
             public void paintComponent(Graphics g) {
-                g.setColor(new Color(36, 36, 36));
+                g.setColor(GRID_COLOR);
                 g.drawLine(0, 0, super.getWidth(), super.getHeight());
                 super.paintComponent(g);
             }
@@ -227,7 +241,7 @@ public class Overlay extends JFrame {
 
             for (TftClass tftClass : main.getProvider().getClasses().values()) {
                 JPanel champCell = new JPanel();
-                champCell.setBorder(BorderFactory.createMatteBorder(1, 1, 0, 0, new Color(36, 36, 36)));
+                champCell.setBorder(BorderFactory.createMatteBorder(1, 1, 0, 0, GRID_COLOR));
 
                 List<TftChampion> championList = tftClass.getChampions().stream()
                         .filter(c -> c.getSynergies().contains(origin))
@@ -303,53 +317,47 @@ public class Overlay extends JFrame {
         popup.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JPanel itemList = new JPanel();
+        itemList.setBorder(BorderFactory.createEmptyBorder(ICON_SIZE + 6, 0, 0, 0));
         itemList.setLayout(new BoxLayout(itemList, BoxLayout.Y_AXIS));
         itemList.add(Box.createVerticalGlue());
         addChild(popup, itemList);
 
         JPanel infoContainer = new JPanel();
         infoContainer.setLayout(new BoxLayout(infoContainer, BoxLayout.Y_AXIS));
-        infoContainer.setPreferredSize(new Dimension(300, 0));
+        infoContainer.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 0));
         addChild(popup, infoContainer);
 
-        //JLabel itemTitle = new JLabel(main.getLang("buildable-items-title"));
-        //itemTitle.setLayout(new BoxLayout(itemTitle, BoxLayout.X_AXIS));
-        //itemTitle.setVisible(false);
-        //infoContainer.add(itemTitle);
-
-        JPanel buildableItemsList = new JPanel();
-        buildableItemsList.setLayout(new FlowLayout(FlowLayout.LEFT));
-        addChild(infoContainer, buildableItemsList);
-
-        //JLabel champsTitle = new JLabel(main.getLang("recommended-champs-title"));
-        //champsTitle.setLayout(new BoxLayout(champsTitle, BoxLayout.X_AXIS));
-        //champsTitle.setVisible(false);
-        //infoContainer.add(champsTitle);
-
-        //JPanel recommendedChampionsList = new JPanel();
-        //recommendedChampionsList.setLayout(new FlowLayout(FlowLayout.LEFT));
-        //addChild(infoContainer, recommendedChampionsList);
+        JPanel combinedItems = new JPanel();
+        addChild(infoContainer, combinedItems);
+        infoContainer.add(Box.createVerticalGlue());
 
         Map<TftItem, Integer> counts = new HashMap<>();
+        Map<TftItem, JSpinner> spinnerMap = new HashMap<>();
+        Multimap<TftItem, JLabel> combinationIcons = MultimapBuilder.hashKeys().arrayListValues().build();
 
         for (TftItem item : main.getProvider().getItems().values()) {
             if (item.getIngredients().isEmpty()) {
                 JPanel line = new JPanel();
+                line.setBorder(BorderFactory.createEmptyBorder(2, 0, 0, 0));
                 line.setLayout(new BoxLayout(line, BoxLayout.X_AXIS));
                 JLabel itemIcon = new JLabel(new ImageIcon(main.getImage(item.getIconUrl(), ICON_SIZE, ICON_SIZE)));
                 itemIcon.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(0, 0, 0, 16), COLORED_BORDER));
                 itemIcon.setToolTipText(main.getLang("item-hover", getItemReplacements(item)));
                 line.add(itemIcon);
 
+                JLabel itemHeaderIcon = new JLabel(new ImageIcon(main.getImage(item.getIconUrl(), ICON_SIZE, ICON_SIZE)));
+                itemHeaderIcon.setBorder(COLORED_BORDER);
+                itemHeaderIcon.setToolTipText(main.getLang("item-hover", getItemReplacements(item)));
+                combinedItems.add(itemHeaderIcon);
+
                 JSpinner spinner = new JSpinner(new SpinnerNumberModel(0, 0, 9001, 1));
+                spinnerMap.put(item, spinner);
                 spinner.addChangeListener(e -> {
                     if ((Integer) spinner.getValue() == 0) {
                         counts.remove(item);
                     } else {
                         counts.put(item, (Integer) spinner.getValue());
                     }
-                    buildableItemsList.removeAll();
-                    //recommendedChampionsList.removeAll();
 
                     List<TftItem> combineableItems = new ArrayList<>();
                     for (TftItem combinedItem : main.getProvider().getItems().values()) {
@@ -365,39 +373,22 @@ public class Overlay extends JFrame {
                             combineableItems.add(combinedItem);
                         }
                     }
-                    if (combineableItems.isEmpty()) {
-                        //itemTitle.setVisible(false);
-                    } else {
-                        //itemTitle.setVisible(true);
-                        Map<TftChampion, Integer> champCounts = new HashMap<>();
+                    for (Map.Entry<TftItem, JLabel> entry : combinationIcons.entries()) {
+                        entry.getValue().setBorder(BorderFactory.createLineBorder(entry.getKey().getIngredients().get(0) == entry.getKey().getIngredients().get(1) ? new Color(100, 100, 100) : GRID_COLOR));
+                        entry.getValue().setEnabled(false);
+                    }
+                    if (!combineableItems.isEmpty()) {
                         for (TftItem combinedItem : combineableItems) {
                             JLabel combinedIcon = new JLabel(new ImageIcon(main.getImage(combinedItem.getIconUrl(), ICON_SIZE, ICON_SIZE)));
                             combinedIcon.setToolTipText(main.getLang("item-hover", getItemReplacements(combinedItem)));
-                            buildableItemsList.add(combinedIcon);
-                            for (TftChampion champion : combinedItem.getChampions()) {
-                                champCounts.put(champion, champCounts.getOrDefault(champion, 0) + 1);
+
+                            if (combinationIcons.containsKey(combinedItem)) {
+                                for (JLabel label : combinationIcons.get(combinedItem)) {
+                                    label.setBorder(BorderFactory.createLineBorder(TEXT_COLOR));
+                                    label.setEnabled(true);
+                                }
                             }
                         }
-
-                        /* TODO: Proper team suggestions
-                        List<TftChampion> champList = new ArrayList<>();
-
-                        for (Map.Entry<TftChampion, Integer> entry : champCounts.entrySet()) {
-                            if (entry.getValue() > 1 + Math.round(combineableItems.size() / 10.0)) {
-                                champList.add(entry.getKey());
-                            }
-                        }
-
-                        if (champList.isEmpty()) {
-                            champsTitle.setVisible(false);
-                        } else {
-                            champsTitle.setVisible(true);
-                            champList.sort(Comparator.comparingInt(TftChampion::getCost));
-                            for (TftChampion champion : champList) {
-                                recommendedChampionsList.add(getChampionIcon(champion));
-                            }
-                        }
-                        */
                     }
 
                     pack();
@@ -405,12 +396,24 @@ public class Overlay extends JFrame {
                 });
                 spinner.setFont(HUGE_FONT);
                 spinner.getEditor().getComponent(0).setForeground(TEXT_COLOR);
-                spinner.getEditor().getComponent(0).setBackground(new Color(0, 0, 0, 0));
+                spinner.getEditor().getComponent(0).setBackground(BACKGROUND);
                 for (int i = 0; i < spinner.getComponentCount(); i++) {
                     Component c = spinner.getComponent(i);
                     c.setBackground(BACKGROUND);
                     if (c instanceof JButton) {
                         ((JButton) c).setBorder(COLORED_BORDER);
+                        c.setCursor(main.getCursorClick());
+                        c.addMouseListener(new MouseAdapter() {
+                            @Override
+                            public void mouseEntered(MouseEvent e) {
+                                c.setBackground(Overlay.GRID_COLOR);
+                            }
+
+                            @Override
+                            public void mouseExited(MouseEvent e) {
+                                c.setBackground(Overlay.BACKGROUND);
+                            }
+                        });
                     }
                 }
                 ((JSpinner.DefaultEditor) spinner.getEditor()).getTextField().setColumns(2);
@@ -428,6 +431,36 @@ public class Overlay extends JFrame {
                 addChild(itemList, line);
             }
         }
+
+        combinedItems.setLayout(new GridLayout(0, spinnerMap.size()));
+
+        for (TftItem item : main.getProvider().getItems().values()) {
+            if (item.getIngredients().isEmpty()) {
+                for (TftItem otherItem : main.getProvider().getItems().values()) {
+                    if (otherItem.getIngredients().isEmpty()) {
+                        TftItem combinedItem = main.getProvider().getCombination(item, otherItem);
+
+                        BufferedImage image = main.getImage(combinedItem.getIconUrl(), ICON_SIZE, ICON_SIZE);
+                        JLabel combinedItemIcon = new JLabel(new ImageIcon(image));
+                        combinedItemIcon.setBorder(BorderFactory.createLineBorder(item == otherItem ? new Color(100, 100, 100) : GRID_COLOR));
+                        combinedItemIcon.setToolTipText(main.getLang("item-hover", getItemReplacements(combinedItem)));
+                        combinedItemIcon.setEnabled(false);
+
+                        BufferedImage disabledImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+                        Graphics2D g2d = disabledImage.createGraphics();
+                        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER , 0.5f));
+                        g2d.drawImage(image, 0, 0, null);
+                        g2d.dispose();
+                        combinedItemIcon.setDisabledIcon(new ImageIcon(disabledImage));
+
+                        combinedItems.add(combinedItemIcon);
+                        combinationIcons.put(combinedItem, combinedItemIcon);
+                    }
+                }
+            }
+        }
+
+        addChild(itemList, new LabelButton(main, main.getLang("reset"), e -> spinnerMap.values().forEach(s -> s.setValue(0))));
 
         addHeaderEntry(main.getLang("item-builder"), getCharButton("I"), popup);
     }
@@ -525,7 +558,7 @@ public class Overlay extends JFrame {
                 "synergies", champion.getSynergies().stream()
                         .map(TftSynergy::getName).collect(Collectors.joining(", ")),
                 "synergies-with-icons", champion.getSynergies().stream()
-                        .map(s -> "<br><img src=\"file:/" + main.getCachedImageFile(s.getIconUrl(), 24, 24).getAbsolutePath() + "\">"
+                        .map(s -> "<br><img src=\"file:/" + main.getCachedImageFile(s.getIconUrl(), 16, 16).getAbsolutePath() + "\">"
                                 + "&nbsp;" + s.getName()).collect(Collectors.joining("")),
                 "iconUrl", champion.getIconUrl().toExternalForm(),
                 "cost", String.valueOf(champion.getCost()),
@@ -557,7 +590,7 @@ public class Overlay extends JFrame {
 
     public void addHeaderEntry(String name, JLabel icon, JPanel popup, boolean alignToButton) {
         icon.setBorder(COLORED_BORDER);
-        icon.setToolTipText(name);
+        //icon.setToolTipText(name);
 
         JPanel container = new JPanel();
         container.setVisible(false);
@@ -612,6 +645,17 @@ public class Overlay extends JFrame {
 
         public WindowMover(JFrame parent) {
             addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    setCursor(Cursor.getDefaultCursor());
+                }
+
+                @Override
                 public void mousePressed(MouseEvent e) {
                     getComponentAt(startClick = e.getPoint());
                 }

@@ -32,8 +32,10 @@ import org.imgscalr.Scalr;
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 import javax.xml.bind.DatatypeConverter;
+import java.awt.Cursor;
 import java.awt.GraphicsEnvironment;
-import java.awt.Image;
+import java.awt.Point;
+import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileReader;
@@ -45,6 +47,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
@@ -58,6 +61,9 @@ public class TftOverlay implements Languaged {
 
     private static final User USER = new Languaged.User() {};
 
+    private Cursor cursor = Cursor.getDefaultCursor();
+    private Cursor cursorClick = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);
+
     private Properties properties = new Properties();
     private LoadingScreen loading;
     private Overlay overlay;
@@ -65,6 +71,7 @@ public class TftOverlay implements Languaged {
     private LanguageManager lang;
     private File cacheFolder;
     private BufferedImage icon;
+    private Map<String, BufferedImage> imageCache = new HashMap<>();
 
     public static void main(String[] args) {
         try {
@@ -104,6 +111,20 @@ public class TftOverlay implements Languaged {
             icon = null;
         }
 
+        try {
+            BufferedImage cursorImage = ImageIO.read(getResourceAsStream("images/cursor-normal.png"));
+            cursor = Toolkit.getDefaultToolkit().createCustomCursor(cursorImage, new Point(0, 0), "Normal");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            BufferedImage cursorImage = ImageIO.read(getResourceAsStream("images/cursor-click.png"));
+            cursorClick = Toolkit.getDefaultToolkit().createCustomCursor(cursorImage, new Point(0, 0), "Click");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         cacheFolder = new File(getDataFolder(), "cache");
         cacheFolder.mkdirs();
 
@@ -115,6 +136,7 @@ public class TftOverlay implements Languaged {
         loading.setVisible(true);
 
         loadProvider();
+        provider.setupCombinations();
         loading.addLine("Provider loaded!");
 
 
@@ -247,23 +269,34 @@ public class TftOverlay implements Languaged {
         return scaledImageFile;
     }
 
-    public Image getImage(URL url, int width, int height) {
+    public BufferedImage getImage(URL url, int width, int height) {
         File imageCacheFolder = new File(cacheFolder, "images");
         File scaledImageFile = new File(imageCacheFolder, hash(url.toString()) + "-" + width + "-" + height + ".png");
+        BufferedImage image = imageCache.get(scaledImageFile.getName());
+        if (image != null) {
+            return image;
+        }
         File imageFile = getCachedImageFile(url);
-        BufferedImage image = null;
         if (imageCacheFolder.exists()) {
             if (scaledImageFile.exists()) {
                 try {
-                    return ImageIO.read(scaledImageFile);
+                    image = ImageIO.read(scaledImageFile);
+                    if (image != null) {
+                        imageCache.put(scaledImageFile.getName(), image);
+                        return image;
+                    }
                 } catch (IOException e) {
                     loading.addLine(e.getMessage());
                     e.printStackTrace();
                 }
             }
-            if (imageFile.exists()) {
+            image = imageCache.get(imageFile.getName());
+            if (image == null && imageFile.exists()) {
                 try {
                     image = ImageIO.read(imageFile);
+                    if (image != null) {
+                        imageCache.put(imageFile.getName(), image);
+                    }
                 } catch (IOException e) {
                     loading.addLine(e.getMessage());
                     e.printStackTrace();
@@ -275,11 +308,17 @@ public class TftOverlay implements Languaged {
         try {
             if (image == null) {
                 image = ImageIO.read(url);
-                ImageIO.write(image, "png", imageFile);
+                if (image != null) {
+                    imageCache.put(imageFile.getName(), image);
+                    ImageIO.write(image, "png", imageFile);
+                }
             }
-            image = Scalr.resize(image, width, height);
-            ImageIO.write(image, "png", scaledImageFile);
-            return image;
+            if (image != null) {
+                image = Scalr.resize(image, width, height);
+                imageCache.put(scaledImageFile.getName(), image);
+                ImageIO.write(image, "png", scaledImageFile);
+                return image;
+            }
         } catch (IOException e) {
             loading.addLine(e.getMessage());
             e.printStackTrace();

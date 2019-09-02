@@ -17,6 +17,8 @@ package de.themoep.tftoverlay.data.Providers;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 import de.themoep.tftoverlay.TftOverlay;
 import de.themoep.tftoverlay.data.TftChampion;
 import de.themoep.tftoverlay.data.TftClass;
@@ -33,6 +35,9 @@ import java.util.Map;
 public abstract class DataProvider {
     protected final TftOverlay main;
     private final Map<String, TftItem> items = new LinkedHashMap<>();
+
+    private final Table<TftItem, TftItem, TftItem> combinationTable = HashBasedTable.create();
+
     private final Map<String, TftChampion> champions = new LinkedHashMap<>();
     private final Map<String, TftClass> classes = new LinkedHashMap<>();
     private final Map<String, TftOrigin> origins = new LinkedHashMap<>();
@@ -51,5 +56,18 @@ public abstract class DataProvider {
 
     protected void add(TftOrigin origin) {
         origins.put(origin.getId(), origin);
+    }
+
+    public void setupCombinations() {
+        for (TftItem item : items.values()) {
+            if (!item.getIngredients().isEmpty()) {
+                combinationTable.put(item.getIngredients().get(0), item.getIngredients().get(1), item);
+                combinationTable.put(item.getIngredients().get(1), item.getIngredients().get(0), item);
+            }
+        }
+    }
+
+    public TftItem getCombination(TftItem item1, TftItem item2) {
+        return combinationTable.get(item1, item2);
     }
 }
