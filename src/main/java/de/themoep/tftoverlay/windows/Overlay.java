@@ -214,6 +214,8 @@ public class Overlay extends JFrame {
             classLabel.setVerticalTextPosition(JLabel.TOP);
             Utils.addTooltip(classLabel, main.getLang("class-hover",
                     "name", tftClass.getName(),
+                    "iconUrl", tftClass.getIconUrl().toExternalForm(),
+                    "iconPath", "file:/" + main.getCachedImageFile(tftClass.getIconUrl(), 16, 16).getAbsolutePath(),
                     "desc", tftClass.getDescription() + (!tftClass.getDescription().isEmpty() && !tftClass.getEffects().isEmpty() ? "<br>" : ""),
                     "effects", tftClass.getEffects(),
                     "champions", tftClass.getChampions().stream().map(TftChampion::getName).collect(Collectors.joining(", ")),
@@ -228,6 +230,8 @@ public class Overlay extends JFrame {
             originLabel.setHorizontalTextPosition(JLabel.LEADING);
             Utils.addTooltip(originLabel, main.getLang("origin-hover",
                     "name", origin.getName(),
+                    "iconUrl", origin.getIconUrl().toExternalForm(),
+                    "iconPath", "file:/" + main.getCachedImageFile(origin.getIconUrl(), 16, 16).getAbsolutePath(),
                     "desc", origin.getDescription() + (!origin.getDescription().isEmpty() && !origin.getEffects().isEmpty() ? "<br>" : ""),
                     "effects", origin.getEffects(),
                     "champions", origin.getChampions().stream().map(TftChampion::getName).collect(Collectors.joining(", ")),
