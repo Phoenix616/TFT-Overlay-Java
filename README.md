@@ -11,7 +11,7 @@ Only works in **windowed** or **borderless** fullscreen mode of LoL!
 - Item overview
 - Item builder
 - Classes and origins overview and chart
-- Auto patch updates
+- Patch data updater
 - Information hilights
 
 ## Planed Features
@@ -24,7 +24,6 @@ Only works in **windowed** or **borderless** fullscreen mode of LoL!
 
 - Does not work when LoL is in fullscreen. Use **windowed** or **borderless** mode!
 - Tooltips only show when the overlay is focused. That's a Java Swing issue to which I'll eventually add a workaround by using custom tooltips.
-- First startup every day takes a while to fetch data. Either deal with it or set `this-prevents-any-updates` to `true` in the `cache/data/chache.propeties` file.
 
 ## Downloads
 

@@ -51,7 +51,6 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 @Getter
@@ -66,7 +65,7 @@ public class TftOverlay implements Languaged {
 
     private Properties properties = new Properties();
     private LoadingScreen loading;
-    private Overlay overlay;
+    private Overlay overlay = null;
     private DataProvider provider;
     private LanguageManager lang;
     private File cacheFolder;
@@ -131,11 +130,20 @@ public class TftOverlay implements Languaged {
         lang = new LanguageManager(this, "en", false);
         lang.setProvider(user -> Locale.getDefault().getLanguage());
 
+        start(false);
+    }
+
+    public void start(boolean forceUpdate) {
+        if (overlay != null) {
+            overlay.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+            overlay.setVisible(false);
+            overlay.dispose();
+        }
         loading = new LoadingScreen(this);
         loading.setLocationRelativeTo(null);
         loading.setVisible(true);
 
-        loadProvider();
+        loadProvider(forceUpdate);
         provider.setupCombinations();
         loading.addLine("Provider loaded!");
 
@@ -150,7 +158,7 @@ public class TftOverlay implements Languaged {
         overlay.setVisible(true);
     }
 
-    private void loadProvider() {
+    private void loadProvider(boolean forceUpdate) {
         File dataCacheFolder = new File(cacheFolder, "data");
         dataCacheFolder.mkdirs();
         File cachePropsFile = new File(dataCacheFolder, "cache.properties");
@@ -164,14 +172,8 @@ public class TftOverlay implements Languaged {
                 e.printStackTrace();
             }
         }
-        long timeStamp = 0;
         // TODO: Use patch version to check for updates
-        if (cacheProps.getProperty("timestamp") != null) {
-            try {
-                timeStamp = Long.parseLong(cacheProps.getProperty("timestamp"));
-            } catch (NumberFormatException ignored) {}
-        }
-        if (cacheProps.getProperty("this-prevents-any-updates") != null || timeStamp + TimeUnit.DAYS.toMillis(1) > System.currentTimeMillis()) {
+        if (!forceUpdate && cacheProps.getProperty("timestamp") != null) {
             loading.addLine("Using cached data...");
             try {
                 provider = new CachedDataProvider(this, dataCacheFolder);

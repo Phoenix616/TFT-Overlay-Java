@@ -154,7 +154,8 @@ public class Overlay extends JFrame {
                         credits.setForeground(TEXT_COLOR);
                     }
 
-                    menu.add(new LabelButton(main, main.getLang("close"), e1 -> System.exit(1)));
+                    menu.add(new LabelButton(main, main.getLang("update-data"), c -> main.start(true)));
+                    menu.add(new LabelButton(main, main.getLang("close"), c -> System.exit(1)));
                     menu.pack();
                     menu.show(menuElement, 10, 0);
                 }
