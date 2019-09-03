@@ -22,21 +22,20 @@ import de.themoep.tftoverlay.TftOverlay;
 import de.themoep.tftoverlay.windows.Overlay;
 
 import javax.swing.JLabel;
-import java.awt.Color;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
 
 public class LabelButton extends JLabel {
 
-    public LabelButton(TftOverlay main, String text, Consumer<MouseEvent> action) {
+    public LabelButton(String text, Consumer<MouseEvent> action) {
         super(text);
 
         setForeground(Overlay.TEXT_COLOR);
         setBorder(Overlay.BUTTON_BORDER);
         setBackground(Overlay.BACKGROUND);
         setOpaque(true);
-        setCursor(main.getCursorClick());
+        setCursor(TftOverlay.CURSOR_CLICK);
 
         addMouseListener(new MouseAdapter() {
             @Override

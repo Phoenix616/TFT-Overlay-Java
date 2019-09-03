@@ -19,24 +19,26 @@ package de.themoep.tftoverlay.windows;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import de.themoep.tftoverlay.TftOverlay;
+import de.themoep.tftoverlay.Utils;
 import de.themoep.tftoverlay.data.TftChampion;
 import de.themoep.tftoverlay.data.TftClass;
 import de.themoep.tftoverlay.data.TftItem;
 import de.themoep.tftoverlay.data.TftOrigin;
 import de.themoep.tftoverlay.data.TftSynergy;
 import de.themoep.tftoverlay.elements.LabelButton;
+import de.themoep.tftoverlay.elements.TabbedPanel;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JSpinner;
+import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.ToolTipManager;
@@ -47,7 +49,6 @@ import javax.swing.plaf.ColorUIResource;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Composite;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -56,18 +57,18 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.Point;
-import java.awt.color.ColorSpace;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorConvertOp;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Overlay extends JFrame {
@@ -88,16 +89,12 @@ public class Overlay extends JFrame {
     public static final int ICON_SIZE = 42;
     private final TftOverlay main;
 
-    private final JPanel mainPopupContainer;
-    private final JPanel mainPanelHeader;
-    private List<JPanel> headerEntries = new ArrayList<>();
-
     public Overlay(TftOverlay main) {
         super(main.getName() + " v" + main.getVersion());
         this.main = main;
         setIconImage(main.getIcon());
 
-        setCursor(main.getCursor());
+        setCursor(TftOverlay.CURSOR);
 
         JPanel content = new JPanel();
         setContentPane(content);
@@ -105,7 +102,6 @@ public class Overlay extends JFrame {
         content.setOpaque(false);
 
         setAlwaysOnTop(true);
-        setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setUndecorated(true);
         setBackground(new Color(0, 0, 0, 0));
@@ -121,16 +117,7 @@ public class Overlay extends JFrame {
 
         // --- Main Panel setup ---
 
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-
-        mainPopupContainer = new JPanel();
-        mainPanelHeader = new JPanel();
-        mainPanelHeader.setLayout(new FlowLayout(FlowLayout.LEADING));
-        mainPanelHeader.setBackground(new Color(0, 0, 0, 0));
-
-        addChild(mainPanel, mainPanelHeader);
-        addChild(mainPanel, mainPopupContainer);
+        TabbedPanel mainPanel = new TabbedPanel(this);
 
         // --- Menu ---
 
@@ -142,7 +129,7 @@ public class Overlay extends JFrame {
             public void mouseClicked(MouseEvent e) {
                 if (e.getButton() == MouseEvent.BUTTON3) {
                     JPopupMenu menu = new JPopupMenu("menu");
-                    menu.setCursor(main.getCursor());
+                    menu.setCursor(TftOverlay.CURSOR);
                     menu.setBackground(BACKGROUND);
                     menu.setBorder(COLORED_BORDER);
                     menu.setLayout(new GridLayout(0, 1));
@@ -154,40 +141,49 @@ public class Overlay extends JFrame {
                         credits.setForeground(TEXT_COLOR);
                     }
 
-                    menu.add(new LabelButton(main, main.getLang("update-data"), c -> main.start(true)));
-                    menu.add(new LabelButton(main, main.getLang("close"), c -> System.exit(1)));
+                    menu.add(new LabelButton(main.getLang("update-data"), c -> main.start(true)));
+                    menu.add(new LabelButton(main.getLang("close"), c -> System.exit(1)));
                     menu.pack();
                     menu.show(menuElement, 10, 0);
                 }
             }
         });
         menuElement.setToolTipText(main.getLang("menu"));
-        mainPanelHeader.add(menuElement);
+        mainPanel.getHeader().add(menuElement);
 
-        // -- Champions panel --
-        addChampionsGridPopup();
-
-        // -- Synergies --
-
-        addSynergyPopup(main.getProvider().getClasses().values(), "C", "classes");
-        addSynergyPopup(main.getProvider().getOrigins().values(), "O", "origins");
+        addChampionsPopup(mainPanel);
 
         // --- Items ---
 
-        addItemBuilderPopup();
-        addItemsPopups();
+        addItemBuilderPopup(mainPanel);
+        addItemsPopups(mainPanel);
 
-        addChild(content, mainPanel);
+        Utils.addChild(content, mainPanel);
 
         pack();
     }
 
-    private void addChampionsGridPopup() {
+    private void addChampionsPopup(TabbedPanel mainPanel) {
+        TabbedPanel champPopup = new TabbedPanel(mainPanel.getParent(), false, true);
+        champPopup.setBackground(HOVER_BACKGROUND);
+
+        // -- Champions panel --
+        addChampionsGridPopup(champPopup);
+        addChampionsListPopup(champPopup);
+
+        // -- Synergies --
+
+        addSynergyPopup(champPopup, main.getProvider().getClasses().values(), main.getLang("classes"), "classes");
+        addSynergyPopup(champPopup, main.getProvider().getOrigins().values(), main.getLang("origins"), "origins");
+
+        mainPanel.addEntry("champions", getCharButton("C"), champPopup);
+    }
+
+    private void addChampionsGridPopup(TabbedPanel parent) {
         JPanel popup = new JPanel();
         popup.setLayout(new GridLayout(main.getProvider().getOrigins().size() + 1, main.getProvider().getClasses().size() + 1));
         popup.setForeground(TEXT_COLOR);
-        popup.setBorder(BorderFactory.createEmptyBorder(5, 5, 0, 0));
-        popup.setBackground(new Color(0, 0, 0, 200));
+        popup.setBackground(new Color(0, 0, 0, 0));
         JPanel cornerCell = new JPanel() {
             @Override
             public void paintComponent(Graphics g) {
@@ -196,27 +192,27 @@ public class Overlay extends JFrame {
                 super.paintComponent(g);
             }
         };
-        addChild(popup, cornerCell);
+        Utils.addChild(popup, cornerCell);
         cornerCell.setForeground(SECONDARY_TEXT_COLOR);
         cornerCell.setLayout(new BoxLayout(cornerCell, BoxLayout.Y_AXIS));
 
         JPanel classesContainer = new JPanel();
         classesContainer.setLayout(new BoxLayout(classesContainer, BoxLayout.X_AXIS));
-        addChild(cornerCell, classesContainer);
+        Utils.addChild(cornerCell, classesContainer);
         classesContainer.add(Box.createHorizontalGlue());
-        addChild(classesContainer, new JLabel(main.getLang("classes")));
+        Utils.addChild(classesContainer, new JLabel(main.getLang("classes")));
 
         JPanel originsContainer = new JPanel();
         originsContainer.setLayout(new BoxLayout(originsContainer, BoxLayout.X_AXIS));
-        addChild(cornerCell, originsContainer);
-        addChild(originsContainer, new JLabel(main.getLang("origins")));
+        Utils.addChild(cornerCell, originsContainer);
+        Utils.addChild(originsContainer, new JLabel(main.getLang("origins")));
         originsContainer.add(Box.createHorizontalGlue());
 
         for (TftClass tftClass : main.getProvider().getClasses().values()) {
             JLabel classLabel = new JLabel(tftClass.getName(), new ImageIcon(main.getImage(tftClass.getIconUrl(), 16, 16)), JLabel.CENTER);
             classLabel.setHorizontalTextPosition(JLabel.CENTER);
             classLabel.setVerticalTextPosition(JLabel.TOP);
-            classLabel.setToolTipText(main.getLang("class-hover",
+            Utils.addTooltip(classLabel, main.getLang("class-hover",
                     "name", tftClass.getName(),
                     "desc", tftClass.getDescription() + (!tftClass.getDescription().isEmpty() && !tftClass.getEffects().isEmpty() ? "<br>" : ""),
                     "effects", tftClass.getEffects(),
@@ -224,13 +220,13 @@ public class Overlay extends JFrame {
                     "champion-count", String.valueOf(tftClass.getChampions().size())
             ));
             classLabel.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, new Color(27, 27, 27)));
-            addChild(popup, classLabel);
+            Utils.addChild(popup, classLabel);
         }
 
         for (TftOrigin origin : main.getProvider().getOrigins().values()) {
             JLabel originLabel = new JLabel(origin.getName(), new ImageIcon(main.getImage(origin.getIconUrl(), 16, 16)), JLabel.TRAILING);
             originLabel.setHorizontalTextPosition(JLabel.LEADING);
-            originLabel.setToolTipText(main.getLang("origin-hover",
+            Utils.addTooltip(originLabel, main.getLang("origin-hover",
                     "name", origin.getName(),
                     "desc", origin.getDescription() + (!origin.getDescription().isEmpty() && !origin.getEffects().isEmpty() ? "<br>" : ""),
                     "effects", origin.getEffects(),
@@ -238,7 +234,7 @@ public class Overlay extends JFrame {
                     "champion-count", String.valueOf(origin.getChampions().size())
             ));
             originLabel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(27, 27, 27)));
-            addChild(popup, originLabel);
+            Utils.addChild(popup, originLabel);
 
             for (TftClass tftClass : main.getProvider().getClasses().values()) {
                 JPanel champCell = new JPanel();
@@ -256,20 +252,95 @@ public class Overlay extends JFrame {
                 }
 
                 for (TftChampion champion : championList) {
-                    champCell.add(getChampionIcon(champion));
+                    champCell.add(getChampionIcon(champion, size));
                 }
-                addChild(popup, champCell);
+                Utils.addChild(popup, champCell);
             }
         }
 
-        addHeaderEntry(main.getLang("champions"), getCharButton("┼"), popup);
+        parent.addEntry(main.getLang("grid"), getTextButton(main.getLang("grid"), FONT), popup, true);
     }
 
-    private void addSynergyPopup(Collection<? extends TftSynergy> synergies, String iconChar, String key) {
+    private void addChampionsListPopup(TabbedPanel parent) {
         JPanel popup = new JPanel();
         popup.setLayout(new BoxLayout(popup, BoxLayout.Y_AXIS));
-        popup.setBackground(HOVER_BACKGROUND);
-        popup.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
+        popup.setForeground(TEXT_COLOR);
+        popup.setBackground(new Color(0, 0, 0, 0));
+
+        Map<TftChampion, JPanel> champPanels = new LinkedHashMap<>();
+
+        JPanel header = new JPanel();
+        header.setLayout(new BoxLayout(header, BoxLayout.X_AXIS));
+        Utils.addChild(popup, header);
+
+        JTextField searchBar = new JTextField();
+        searchBar.setToolTipText(main.getLang("search"));
+        searchBar.addActionListener(e -> {
+            Set<String> found = main.getProvider().getChampions().values().stream()
+                    .filter(c -> searchBar.getText().isEmpty() || c.getId().contains(searchBar.getText().toLowerCase()))
+                    .map(TftChampion::getId)
+                    .collect(Collectors.toSet());
+
+            int shown = 0;
+            for (Map.Entry<TftChampion, JPanel> entry : champPanels.entrySet()) {
+                if (shown < 6 && (found.isEmpty() || found.contains(entry.getKey().getId()))) {
+                    entry.getValue().setVisible(true);
+                    shown++;
+                } else {
+                    entry.getValue().setVisible(false);
+                }
+                pack();
+            }
+        });
+        searchBar.setBorder(BORDER);
+        searchBar.setFont(HUGE_FONT);
+        Utils.addChild(header, searchBar);
+
+        LabelButton searchButton = new LabelButton(main.getLang("search"), c -> searchBar.postActionEvent());
+        searchButton.setFont(HUGE_FONT);
+        header.add(searchButton);
+
+        searchBar.setBackground(BACKGROUND);
+
+        JPanel champList = new JPanel();
+        champList.setLayout(new BoxLayout(champList, BoxLayout.Y_AXIS));
+        Utils.addChild(popup, champList);
+        //champList.setBackground(BACKGROUND);
+        //champList.setForeground(TEXT_COLOR);
+        //JScrollPane champScroll = new JScrollPane(champList);
+        //champScroll.setPreferredSize(new Dimension(420, 640));
+        //Utils.addChild(popup, champScroll);
+
+        main.getProvider().getChampions().values().stream().sorted(Comparator.comparing(TftChampion::getId)).forEachOrdered(c -> {
+            JPanel champPanel = new JPanel();
+            champPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, GRID_COLOR));
+            champPanel.setLayout(new FlowLayout(FlowLayout.LEADING));
+            Utils.addChild(champList, champPanel);
+
+            JLabel icon = getChampionIcon(c, 36);
+            champPanel.setToolTipText(icon.getToolTipText());
+            champPanel.add(icon);
+
+            Utils.addChild(champPanel, new JLabel(main.getLang("champion-info", getReplacements(c))));
+            Utils.addChild(champPanel, new JLabel(main.getLang("spell-info", getReplacements(c))));
+            champPanels.put(c, champPanel);
+        });
+
+        int shown = 0;
+        for (JPanel panel : champPanels.values()) {
+            shown++;
+            if (shown > 5) {
+                panel.setVisible(false);
+            }
+        }
+
+        parent.addEntry(main.getLang("list"), getTextButton(main.getLang("list"), FONT), popup);
+    }
+
+    private void addSynergyPopup(TabbedPanel parent, Collection<? extends TftSynergy> synergies, String iconChar, String key) {
+        JPanel popup = new JPanel();
+        popup.setLayout(new BoxLayout(popup, BoxLayout.Y_AXIS));
+        popup.setBackground(new Color(0, 0, 0, 0));
 
         for (TftSynergy synergy : synergies) {
             JPanel panel = new JPanel();
@@ -283,8 +354,8 @@ public class Overlay extends JFrame {
 
             JLabel infoLabel = new JLabel(main.getLang(key + "-info",
                     "name", synergy.getName(),
-                    "desc", addHilights(synergy.getDescription()) + (!synergy.getDescription().isEmpty() && !synergy.getEffects().isEmpty() ? "<br>" : ""),
-                    "effects", addHilights(synergy.getEffects()),
+                    "desc", Utils.addHilights(synergy.getDescription()) + (!synergy.getDescription().isEmpty() && !synergy.getEffects().isEmpty() ? "<br>" : ""),
+                    "effects", Utils.addHilights(synergy.getEffects()),
                     "champions", synergy.getChampions().stream().map(TftChampion::getName).collect(Collectors.joining(", ")),
                     "champion-count", String.valueOf(championList.size())
             ), new ImageIcon(main.getImage(synergy.getIconUrl(), 24, 24)), JLabel.LEADING);
@@ -296,21 +367,21 @@ public class Overlay extends JFrame {
             JPanel champPanel = new JPanel();
             champPanel.setLayout(new GridLayout(championList.size() > 3 ? 2 : 1, 0));
             for (int i = 0; i < championList.size(); i++) {
-                champPanel.add(getChampionIcon(championList.get(i)));
+                champPanel.add(getChampionIcon(championList.get(i), 24));
                 if (championList.size() > 3 && championList.size() % 2 > 0 && (championList.size() / 2 == i)) {
                     champPanel.add(new JLabel());
                 }
             }
-            addChild(champPanelContainer, champPanel);
-            addChild(panel, champPanelContainer);
+            Utils.addChild(champPanelContainer, champPanel);
+            Utils.addChild(panel, champPanelContainer);
 
-            addChild(popup, panel);
+            Utils.addChild(popup, panel);
         }
 
-        addHeaderEntry(main.getLang(key), getCharButton(iconChar), popup);
+        parent.addEntry(main.getLang(key), getTextButton(iconChar, FONT), popup);
     }
 
-    private void addItemBuilderPopup() {
+    private void addItemBuilderPopup(TabbedPanel mainPanel) {
         JPanel popup = new JPanel();
         popup.setLayout(new BoxLayout(popup, BoxLayout.X_AXIS));
         popup.setForeground(TEXT_COLOR);
@@ -321,15 +392,15 @@ public class Overlay extends JFrame {
         itemList.setBorder(BorderFactory.createEmptyBorder(ICON_SIZE + 6, 0, 0, 0));
         itemList.setLayout(new BoxLayout(itemList, BoxLayout.Y_AXIS));
         itemList.add(Box.createVerticalGlue());
-        addChild(popup, itemList);
+        Utils.addChild(popup, itemList);
 
         JPanel infoContainer = new JPanel();
         infoContainer.setLayout(new BoxLayout(infoContainer, BoxLayout.Y_AXIS));
         infoContainer.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 0));
-        addChild(popup, infoContainer);
+        Utils.addChild(popup, infoContainer);
 
         JPanel combinedItems = new JPanel();
-        addChild(infoContainer, combinedItems);
+        Utils.addChild(infoContainer, combinedItems);
         infoContainer.add(Box.createVerticalGlue());
 
         Map<TftItem, Integer> counts = new HashMap<>();
@@ -343,12 +414,12 @@ public class Overlay extends JFrame {
                 line.setLayout(new BoxLayout(line, BoxLayout.X_AXIS));
                 JLabel itemIcon = new JLabel(new ImageIcon(main.getImage(item.getIconUrl(), ICON_SIZE, ICON_SIZE)));
                 itemIcon.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(0, 0, 0, 16), COLORED_BORDER));
-                itemIcon.setToolTipText(main.getLang("item-hover", getItemReplacements(item)));
+                itemIcon.setToolTipText(main.getLang("item-hover", getReplacements(item)));
                 line.add(itemIcon);
 
                 JLabel itemHeaderIcon = new JLabel(new ImageIcon(main.getImage(item.getIconUrl(), ICON_SIZE, ICON_SIZE)));
                 itemHeaderIcon.setBorder(COLORED_BORDER);
-                itemHeaderIcon.setToolTipText(main.getLang("item-hover", getItemReplacements(item)));
+                itemHeaderIcon.setToolTipText(main.getLang("item-hover", getReplacements(item)));
                 combinedItems.add(itemHeaderIcon);
 
                 JSpinner spinner = new JSpinner(new SpinnerNumberModel(0, 0, 9001, 1));
@@ -381,7 +452,7 @@ public class Overlay extends JFrame {
                     if (!combineableItems.isEmpty()) {
                         for (TftItem combinedItem : combineableItems) {
                             JLabel combinedIcon = new JLabel(new ImageIcon(main.getImage(combinedItem.getIconUrl(), ICON_SIZE, ICON_SIZE)));
-                            combinedIcon.setToolTipText(main.getLang("item-hover", getItemReplacements(combinedItem)));
+                            combinedIcon.setToolTipText(main.getLang("item-hover", getReplacements(combinedItem)));
 
                             if (combinationIcons.containsKey(combinedItem)) {
                                 for (JLabel label : combinationIcons.get(combinedItem)) {
@@ -403,7 +474,7 @@ public class Overlay extends JFrame {
                     c.setBackground(BACKGROUND);
                     if (c instanceof JButton) {
                         ((JButton) c).setBorder(COLORED_BORDER);
-                        c.setCursor(main.getCursorClick());
+                        c.setCursor(TftOverlay.CURSOR_CLICK);
                         c.addMouseListener(new MouseAdapter() {
                             @Override
                             public void mouseEntered(MouseEvent e) {
@@ -428,8 +499,8 @@ public class Overlay extends JFrame {
                     }
                 });
 
-                addChild(line, spinner);
-                addChild(itemList, line);
+                Utils.addChild(line, spinner);
+                Utils.addChild(itemList, line);
             }
         }
 
@@ -444,7 +515,7 @@ public class Overlay extends JFrame {
                         BufferedImage image = main.getImage(combinedItem.getIconUrl(), ICON_SIZE, ICON_SIZE);
                         JLabel combinedItemIcon = new JLabel(new ImageIcon(image));
                         combinedItemIcon.setBorder(BorderFactory.createLineBorder(item == otherItem ? new Color(100, 100, 100) : GRID_COLOR));
-                        combinedItemIcon.setToolTipText(main.getLang("item-hover", getItemReplacements(combinedItem)));
+                        combinedItemIcon.setToolTipText(main.getLang("item-hover", getReplacements(combinedItem)));
                         combinedItemIcon.setEnabled(false);
 
                         BufferedImage disabledImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
@@ -461,12 +532,12 @@ public class Overlay extends JFrame {
             }
         }
 
-        addChild(itemList, new LabelButton(main, main.getLang("reset"), e -> spinnerMap.values().forEach(s -> s.setValue(0))));
+        Utils.addChild(itemList, new LabelButton(main.getLang("reset"), e -> spinnerMap.values().forEach(s -> s.setValue(0))));
 
-        addHeaderEntry(main.getLang("item-builder"), getCharButton("I"), popup);
+        mainPanel.addEntry(main.getLang("item-builder"), getCharButton("I"), popup);
     }
 
-    private void addItemsPopups() {
+    private void addItemsPopups(TabbedPanel mainPanel) {
         for (TftItem item : main.getProvider().getItems().values()) {
             if (item.getIngredients().isEmpty()) {
 
@@ -476,8 +547,8 @@ public class Overlay extends JFrame {
 
                 JPanel line = new JPanel();
                 line.setLayout(new FlowLayout(FlowLayout.LEADING));
-                line.add(new JLabel(main.getLang("item-info", getItemReplacements(item)), new ImageIcon(main.getImage(item.getIconUrl(), ICON_SIZE, ICON_SIZE)), JLabel.LEADING));
-                addChild(combinations, line);
+                line.add(new JLabel(main.getLang("item-info", getReplacements(item)), new ImageIcon(main.getImage(item.getIconUrl(), ICON_SIZE, ICON_SIZE)), JLabel.LEADING));
+                Utils.addChild(combinations, line);
 
                 item.getIngredient().stream().sorted(Comparator.comparing(o -> o.getOtherIngredient(item).getId())).forEachOrdered(combinedItem -> {
                     JPanel combLine = new JPanel();
@@ -492,7 +563,7 @@ public class Overlay extends JFrame {
 
                     TftItem ingredient = combinedItem.getOtherIngredient(item);
                     JLabel itemIcon = new JLabel(new ImageIcon(main.getImage(ingredient.getIconUrl(), ICON_SIZE, ICON_SIZE)));
-                    itemIcon.setToolTipText(main.getLang("item-hover", getItemReplacements(ingredient)));
+                    itemIcon.setToolTipText(main.getLang("item-hover", getReplacements(ingredient)));
                     itemIcon.setBorder(COLORED_BORDER);
                     combLine.add(itemIcon);
 
@@ -501,46 +572,45 @@ public class Overlay extends JFrame {
                     arrow.setFont(HUGE_FONT);
                     combLine.add(arrow);
 
-                    JLabel combinedLabel = new JLabel(main.getLang("item-info-combined", getItemReplacements(combinedItem)), new ImageIcon(main.getImage(combinedItem.getIconUrl(), ICON_SIZE, ICON_SIZE)), JLabel.LEADING);
-                    combinedLabel.setToolTipText(main.getLang("item-hover", getItemReplacements(combinedItem)));
+                    JLabel combinedLabel = new JLabel(main.getLang("item-info-combined", getReplacements(combinedItem)), new ImageIcon(main.getImage(combinedItem.getIconUrl(), ICON_SIZE, ICON_SIZE)), JLabel.LEADING);
+                    combinedLabel.setToolTipText(main.getLang("item-hover", getReplacements(combinedItem)));
                     combinedLabel.setFont(FONT);
                     combLine.add(combinedLabel);
-                    addChild(combinations, combLine);
+                    Utils.addChild(combinations, combLine);
                 });
 
-                addHeaderEntry(item.getName(), new JLabel("", new ImageIcon(main.getImage(item.getIconUrl(), ICON_SIZE, ICON_SIZE)), JLabel.CENTER), combinations);
+                mainPanel.addEntry(item.getName(), new JLabel("", new ImageIcon(main.getImage(item.getIconUrl(), ICON_SIZE, ICON_SIZE)), JLabel.CENTER), combinations);
             }
         }
     }
 
     private JLabel getCharButton(String c) {
+        JLabel button = getTextButton(c, HUGE_FONT);
+        button.setPreferredSize(new Dimension(ICON_SIZE, ICON_SIZE));
+        return button;
+    }
+
+    private JLabel getTextButton(String c, Font font) {
         JLabel button = new JLabel(c);
         button.setForeground(TEXT_COLOR);
         button.setHorizontalAlignment(SwingConstants.CENTER);
-        button.setPreferredSize(new Dimension(ICON_SIZE, ICON_SIZE));
-        button.setFont(HUGE_FONT);
+        button.setFont(font.deriveFont(Font.BOLD));
         button.setBorder(BORDER);
         button.setOpaque(true);
         button.setBackground(BACKGROUND);
         return button;
     }
 
-    private String addHilights(String text) {
-        return text.replaceAll("\\((\\d+)\\)", "<font color=\"#E69A2E\">($1)</font>")
-                .replaceAll("((\\+| )\\d+(%|st|nd|rd|th|s| ?seconds| |))", "<font color=\"#FFFFFF\">$1</font>")
-                .replaceAll("([Hh]ealth( Point(s?)|)|HP|heal(ing|)|Armor)", " <font color=\"#9AE62E\">$1</font>")
-                .replaceAll("([Mm]ana|Spell Power|magical damage)", " <font color=\"#2EA7E6\">$1</font>")
-                .replaceAll("([Aa]ttack( Speed| Range|s|)|AS|[Dd]amage)", " <font color=\"#E6482E\">$1</font>");
-    }
-
-    private String[] getItemReplacements(TftItem item) {
+    private String[] getReplacements(TftItem item) {
         return new String[]{
                 "name", item.getName(),
+                "iconUrl", item.getIconUrl().toExternalForm(),
+                "iconPath", "file:/" + main.getCachedImageFile(item.getIconUrl(), 36, 36).getAbsolutePath(),
                 "champions", item.getChampions().stream().map(TftChampion::getName).collect(Collectors.joining(", ")),
                 "champions-with-icons", item.getChampions().stream()
                         .map(c -> "<br><img src=\"file:/" + main.getCachedImageFile(c.getIconUrl(), 24, 24).getAbsolutePath() + "\">"
                                 + "&nbsp;" + c.getName()).collect(Collectors.joining("")),
-                "desc", addHilights(item.getDescription()),
+                "desc", Utils.addHilights(item.getDescription()),
                 "ingredient", item.getIngredient().stream().map(TftItem::getName).collect(Collectors.joining(", ")),
                 "ingredient-with-icons", item.getIngredient().stream()
                         .map(i -> "<img src=\"file:/" + main.getCachedImageFile(i.getIconUrl(), 24, 24).getAbsolutePath() + "\">"
@@ -552,16 +622,17 @@ public class Overlay extends JFrame {
         };
     }
 
-    private JLabel getChampionIcon(TftChampion champion) {
-        JLabel championLabel = new JLabel("", new ImageIcon(main.getImage(champion.getIconUrl(), 24, 24)), JLabel.CENTER);
-        championLabel.setToolTipText(main.getLang("champion-hover",
-                "name", champion.getName(),
+    private String[] getReplacements(TftChampion champion) {
+        return new String[]{"name", champion.getName(),
                 "synergies", champion.getSynergies().stream()
                         .map(TftSynergy::getName).collect(Collectors.joining(", ")),
+                "synergy-icons", champion.getSynergies().stream()
+                        .map(s -> "<img src=\"file:/" + main.getCachedImageFile(s.getIconUrl(), 16, 16).getAbsolutePath() + "\">").collect(Collectors.joining()),
                 "synergies-with-icons", champion.getSynergies().stream()
-                        .map(s -> "<br><img src=\"file:/" + main.getCachedImageFile(s.getIconUrl(), 16, 16).getAbsolutePath() + "\">"
-                                + "&nbsp;" + s.getName()).collect(Collectors.joining("")),
+                        .map(s -> "<img src=\"file:/" + main.getCachedImageFile(s.getIconUrl(), 16, 16).getAbsolutePath() + "\">"
+                                + "&nbsp;" + s.getName()).collect(Collectors.joining("<br>")),
                 "iconUrl", champion.getIconUrl().toExternalForm(),
+                "iconPath", "file:/" + main.getCachedImageFile(champion.getIconUrl(), 36, 36).getAbsolutePath(),
                 "cost", String.valueOf(champion.getCost()),
                 "damage", champion.getDamage(),
                 "dps", champion.getDps(),
@@ -571,74 +642,25 @@ public class Overlay extends JFrame {
                 "range", String.valueOf(champion.getRange()),
                 "speed", String.valueOf(champion.getSpeed()),
                 "items", champion.getRecommendedItems().stream()
-                        .map(TftItem::getName).collect(Collectors.joining(", ")),
+                .map(TftItem::getName).collect(Collectors.joining(", ")),
                 "items-with-icons", champion.getRecommendedItems().stream()
                         .map(i -> "<br><img src=\"file:/" + main.getCachedImageFile(i.getIconUrl(), 24, 24).getAbsolutePath() + "\">"
                                 + "&nbsp;" + i.getName()).collect(Collectors.joining("")),
                 "spell-name", champion.getSpell().getName(),
-                "spell-desc", addHilights(champion.getSpell().getDescription()),
-                "spell-effect", addHilights(champion.getSpell().getEffect()),
+                "spell-iconUrl", champion.getSpell().getIconUrl().toExternalForm(),
+                "spell-iconPath", "file:/" + main.getCachedImageFile(champion.getSpell().getIconUrl(), 16, 16).getAbsolutePath(),
+                "spell-desc", Utils.addHilights(champion.getSpell().getDescription()),
+                "spell-effect", Utils.addHilights(champion.getSpell().getEffect()),
                 "spell-mana", champion.getSpell().getMana(),
                 "spell-type", champion.getSpell().getType()
-        ));
+        };
+    }
+
+    private JLabel getChampionIcon(TftChampion champion, int size) {
+        JLabel championLabel = new JLabel("", new ImageIcon(main.getImage(champion.getIconUrl(), size, size)), JLabel.CENTER);
+        Utils.addTooltip(championLabel, main.getLang("champion-hover", getReplacements(champion)));
         championLabel.setBorder(BorderFactory.createLineBorder(champion.getColor()));
         return championLabel;
-    }
-
-    public void addHeaderEntry(String name, JLabel icon, JPanel container) {
-        addHeaderEntry(name, icon, container, true);
-    }
-
-    public void addHeaderEntry(String name, JLabel icon, JPanel popup, boolean alignToButton) {
-        icon.setBorder(COLORED_BORDER);
-        //icon.setToolTipText(name);
-
-        JPanel container = new JPanel();
-        container.setVisible(false);
-        container.add(popup);
-        addChild(mainPopupContainer, container);
-
-        icon.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                for (JPanel entry : headerEntries) {
-                    entry.setVisible(false);
-                }
-                container.setVisible(true);
-                if (alignToButton) {
-                    container.setBorder(BorderFactory.createEmptyBorder(0, icon.getX() - 10, 0, 0));
-                }
-                pack();
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                if (icon.getHeight() + 1 > e.getY()) {
-                    container.setVisible(false);
-                    pack();
-                }
-            }
-        });
-        container.getComponent(0).addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseExited(MouseEvent e) {
-                if (e.getX() > 0 && e.getX() < popup.getWidth()
-                        && e.getY() > 0 && e.getY() < popup.getHeight()) {
-                    return;
-                }
-                container.setVisible(false);
-                pack();
-            }
-        });
-        mainPanelHeader.add(icon);
-
-        headerEntries.add(container);
-    }
-
-    private void addChild(JComponent parent, JComponent child) {
-        parent.add(child);
-        child.setForeground(parent.getForeground());
-        child.setBackground(new Color(0, 0, 0, 0));
     }
 
     private class WindowMover extends JPanel {

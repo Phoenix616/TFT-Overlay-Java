@@ -17,7 +17,7 @@ Only works in **windowed** or **borderless** fullscreen mode of LoL!
 ## Planed Features
 
 - Team builder based on item recommendations
-- Champion and Item search
+- Item search
 - Automatic patch detection
 
 ## Known Issues

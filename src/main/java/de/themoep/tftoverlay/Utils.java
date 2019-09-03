@@ -18,6 +18,17 @@ package de.themoep.tftoverlay;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import de.themoep.tftoverlay.windows.Overlay;
+
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPopupMenu;
+import javax.swing.SwingUtilities;
+import java.awt.Color;
+import java.awt.GridLayout;
+import java.awt.Point;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -31,4 +42,47 @@ public class Utils {
         return map;
     }
 
+    public static void addChild(JComponent parent, JComponent child) {
+        parent.add(child);
+        child.setForeground(parent.getForeground());
+        child.setBackground(new Color(0, 0, 0, 0));
+    }
+
+    public static void addTooltip(JComponent component, String text) {
+        JPopupMenu tooltip = new JPopupMenu(text);
+        tooltip.setBackground(Overlay.HOVER_BACKGROUND);
+        tooltip.setBorder(Overlay.BORDER);
+        tooltip.setLayout(new GridLayout(0, 1));
+        JLabel label = new JLabel(text);
+        label.setForeground(Overlay.TEXT_COLOR);
+        tooltip.add(label);
+        tooltip.pack();
+        component.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                if (component.isShowing()) {
+                    tooltip.show(component, component.getWidth() + 20, component.getHeight() + 20);
+                    tooltip.repaint();
+                }
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                Point location = SwingUtilities.convertPoint(component, component.getLocation(), e.getComponent());
+                if (e.getX() > 0 && e.getX() < location.getX() + component.getWidth()
+                        && e.getY() > 0 && e.getY() < location.getY() + component.getHeight()) {
+                    return;
+                }
+                tooltip.setVisible(false);
+            }
+        });
+    }
+
+    public static String addHilights(String text) {
+        return text.replaceAll("\\((\\d+)\\)", "<font color=\"#E69A2E\">($1)</font>")
+                .replaceAll("((\\+| )\\d+(%|st|nd|rd|th|s| ?seconds| |))", "<font color=\"#FFFFFF\">$1</font>")
+                .replaceAll("([Hh]ealth( Point(s?)|)|HP|heal(ing|)|Armor)", " <font color=\"#9AE62E\">$1</font>")
+                .replaceAll("([Mm]ana|Spell Power|magical damage|Magic)", " <font color=\"#2EA7E6\">$1</font>")
+                .replaceAll("([Aa]ttack(ing| Speed| Range|s|)|AS|[Dd]amage)", " <font color=\"#E6482E\">$1</font>");
+    }
 }

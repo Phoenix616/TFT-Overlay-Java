@@ -60,8 +60,8 @@ public class TftOverlay implements Languaged {
 
     private static final User USER = new Languaged.User() {};
 
-    private Cursor cursor = Cursor.getDefaultCursor();
-    private Cursor cursorClick = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);
+    public static Cursor CURSOR = Cursor.getDefaultCursor();
+    public static Cursor CURSOR_CLICK = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);
 
     private Properties properties = new Properties();
     private LoadingScreen loading;
@@ -91,6 +91,20 @@ public class TftOverlay implements Languaged {
             return;
         }
 
+        try {
+            BufferedImage cursorImage = ImageIO.read(TftOverlay.class.getClassLoader().getResourceAsStream("images/cursor-normal.png"));
+            CURSOR = Toolkit.getDefaultToolkit().createCustomCursor(cursorImage, new Point(0, 0), "Normal");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            BufferedImage cursorImage = ImageIO.read(TftOverlay.class.getClassLoader().getResourceAsStream("images/cursor-click.png"));
+            CURSOR_CLICK = Toolkit.getDefaultToolkit().createCustomCursor(cursorImage, new Point(0, 0), "Click");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         instance = new TftOverlay();
     }
 
@@ -108,20 +122,6 @@ public class TftOverlay implements Languaged {
             icon = ImageIO.read(getResourceAsStream("images/TFT-Overlay-Icon.png"));
         } catch (IOException e) {
             icon = null;
-        }
-
-        try {
-            BufferedImage cursorImage = ImageIO.read(getResourceAsStream("images/cursor-normal.png"));
-            cursor = Toolkit.getDefaultToolkit().createCustomCursor(cursorImage, new Point(0, 0), "Normal");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        try {
-            BufferedImage cursorImage = ImageIO.read(getResourceAsStream("images/cursor-click.png"));
-            cursorClick = Toolkit.getDefaultToolkit().createCustomCursor(cursorImage, new Point(0, 0), "Click");
-        } catch (IOException e) {
-            e.printStackTrace();
         }
 
         cacheFolder = new File(getDataFolder(), "cache");
@@ -148,6 +148,7 @@ public class TftOverlay implements Languaged {
         loading.addLine("Provider loaded!");
 
 
+        loading.addLine("Loading Overlay...");
         overlay = new Overlay(this);
         loading.addLine("Overlay loaded!");
 
@@ -256,17 +257,8 @@ public class TftOverlay implements Languaged {
         File imageCacheFolder = new File(cacheFolder, "images");
         File scaledImageFile = new File(imageCacheFolder, hash(url.toString()) + "-" + width + "-" + height + ".png");
 
-        if (!scaledImageFile.exists() && imageCacheFolder.exists()) {
-            File imageFile = getCachedImageFile(url);
-            if (imageFile.exists()) {
-                try {
-                    BufferedImage image = ImageIO.read(imageFile);
-                    image = Scalr.resize(image, width, height);
-                    ImageIO.write(image, "png", scaledImageFile);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+        if (!scaledImageFile.exists()) {
+            getImage(url, width, height);
         }
         return scaledImageFile;
     }
