@@ -80,9 +80,9 @@ public class Utils {
 
     public static String addHilights(String text) {
         return text.replaceAll("\\((\\d+)\\)", "<font color=\"#E69A2E\">($1)</font>")
-                .replaceAll("((\\+| )\\d+(%|st|nd|rd|th|s| ?seconds| |))", "<font color=\"#FFFFFF\">$1</font>")
+                .replaceAll("(([+ ])\\d+(%|st|nd|rd|th|s| ?seconds| |))", "<font color=\"#FFFFFF\">$1</font>")
                 .replaceAll("([Hh]ealth( Point(s?)|)|HP|heal(ing|)|Armor)", " <font color=\"#9AE62E\">$1</font>")
-                .replaceAll("([Mm]ana|Spell Power|magical damage|Magic)", " <font color=\"#2EA7E6\">$1</font>")
-                .replaceAll("([Aa]ttack(ing| Speed| Range|s|)|AS|[Dd]amage)", " <font color=\"#E6482E\">$1</font>");
+                .replaceAll("([Mm]ana|Spell Power|magic(al|) damage|Magic)", " <font color=\"#2EA7E6\">$1</font>")
+                .replaceAll("([Aa]ttack(ing| [Ss]peed| [Rr]ange|s|)|AS|[Dd]amag(es?|img))", " <font color=\"#E6482E\">$1</font>");
     }
 }

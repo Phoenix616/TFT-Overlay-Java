@@ -313,8 +313,8 @@ public class Overlay extends JFrame {
 
         main.getProvider().getChampions().values().stream().sorted(Comparator.comparing(TftChampion::getId)).forEachOrdered(c -> {
             JPanel champPanel = new JPanel();
-            champPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, GRID_COLOR));
             champPanel.setLayout(new FlowLayout(FlowLayout.LEADING));
+            champPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, GRID_COLOR));
             Utils.addChild(champList, champPanel);
 
             JLabel icon = getChampionIcon(c, 36);
@@ -323,6 +323,20 @@ public class Overlay extends JFrame {
 
             Utils.addChild(champPanel, new JLabel(main.getLang("champion-info", getReplacements(c))));
             Utils.addChild(champPanel, new JLabel(main.getLang("spell-info", getReplacements(c))));
+
+            if (!c.getRecommendedItems().isEmpty()) {
+                JPanel itemsPanel = new JPanel();
+                itemsPanel.setLayout(new BoxLayout(itemsPanel, BoxLayout.Y_AXIS));
+                Utils.addChild(champPanel, itemsPanel);
+                Utils.addChild(itemsPanel, new JLabel(main.getLang("recommended-items")));
+                for (TftItem item : c.getRecommendedItems()) {
+                    JLabel itemIcon = new JLabel(item.getName(), new ImageIcon(main.getImage(item.getIconUrl(), 24, 24)), SwingConstants.LEADING);
+                    Utils.addTooltip(itemIcon, main.getLang("item-hover-short", getReplacements(item)));
+                    Utils.addChild(itemsPanel, itemIcon);
+                    itemIcon.setForeground(SECONDARY_TEXT_COLOR);
+                }
+            }
+
             champPanels.put(c, champPanel);
         });
 

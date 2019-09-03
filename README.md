@@ -35,8 +35,9 @@ The Overlay requires at least Java 8 to run.
 
 ![Item combination](https://i.moep.tv/qvcGIwGL.png)
 ![Item builder](https://i.moep.tv/kuk7jWL7.png)
-![Champions overview](https://i.moep.tv/WtzMoCx.png)
-![Champion details](https://i.moep.tv/mNjzcOsL.png)
+![Champions list](https://i.moep.tv/q5CdtMd7.png)
+![Champions grid](https://i.moep.tv/lXK0jvVV.png)
+![Champions grid details](https://i.moep.tv/lXK0jvVV.png)
 ![Classes overview](https://i.moep.tv/brWOBARv.png)
 ![Origins overview](https://i.moep.tv/gYdIhy4D.png)
 
