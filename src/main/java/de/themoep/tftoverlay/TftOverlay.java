@@ -24,6 +24,7 @@ import de.themoep.tftoverlay.data.Providers.DataProvider;
 import de.themoep.tftoverlay.data.Providers.LoLChessGgProvider;
 import de.themoep.tftoverlay.windows.LoadingScreen;
 import de.themoep.tftoverlay.windows.Overlay;
+import de.themoep.tftoverlay.windows.RecordingWindow;
 import de.themoep.utils.lang.simple.LanguageManager;
 import de.themoep.utils.lang.simple.Languaged;
 import lombok.Getter;
@@ -66,6 +67,8 @@ public class TftOverlay implements Languaged {
     private Properties properties = new Properties();
     private LoadingScreen loading;
     private Overlay overlay = null;
+    private RecordingWindow recordingWindow;
+
     private DataProvider provider;
     private LanguageManager lang;
     private File cacheFolder;
@@ -129,6 +132,8 @@ public class TftOverlay implements Languaged {
 
         lang = new LanguageManager(this, "en", false);
         lang.setProvider(user -> Locale.getDefault().getLanguage());
+
+        recordingWindow = new RecordingWindow(this);
 
         start(false);
     }

@@ -26,7 +26,9 @@ import de.themoep.tftoverlay.data.TftItem;
 import de.themoep.tftoverlay.data.TftOrigin;
 import de.themoep.tftoverlay.data.TftSynergy;
 import de.themoep.tftoverlay.elements.LabelButton;
+import de.themoep.tftoverlay.elements.LabelCheckbox;
 import de.themoep.tftoverlay.elements.TabbedPanel;
+import de.themoep.tftoverlay.elements.WindowMover;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -46,20 +48,20 @@ import javax.swing.UIManager;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.ColorUIResource;
+import java.awt.AWTEvent;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
-import java.awt.Point;
+import java.awt.Toolkit;
+import java.awt.event.AWTEventListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -90,7 +92,7 @@ public class Overlay extends JFrame {
     private final TftOverlay main;
 
     public Overlay(TftOverlay main) {
-        super(main.getName() + " v" + main.getVersion());
+        super(main.getName());
         this.main = main;
         setIconImage(main.getIcon());
 
@@ -102,9 +104,9 @@ public class Overlay extends JFrame {
         content.setOpaque(false);
 
         setAlwaysOnTop(true);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setUndecorated(true);
-        setBackground(new Color(0, 0, 0, 0));
+        setBackground(new Color(145, 145, 145, 0));
 
         UIManager.put("TabbedPane.font", FONT);
         UIManager.put("ToolTip.background", new ColorUIResource(BACKGROUND));
@@ -124,6 +126,13 @@ public class Overlay extends JFrame {
         WindowMover menuElement = new WindowMover(this);
         menuElement.setPreferredSize(new Dimension(10, ICON_SIZE - 2));
         menuElement.setBackground(TEXT_COLOR);
+        LabelCheckbox recordingCheckbox = new LabelCheckbox(main.getLang("recording-window"), b -> {
+            if (b) {
+                main.getRecordingWindow().start();
+            } else {
+                main.getRecordingWindow().stop();
+            }
+        });
         menuElement.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -141,6 +150,7 @@ public class Overlay extends JFrame {
                         credits.setForeground(TEXT_COLOR);
                     }
 
+                    menu.add(recordingCheckbox);
                     menu.add(new LabelButton(main.getLang("update-data"), c -> main.start(true)));
                     menu.add(new LabelButton(main.getLang("close"), c -> System.exit(1)));
                     menu.pack();
@@ -681,38 +691,6 @@ public class Overlay extends JFrame {
         return championLabel;
     }
 
-    private class WindowMover extends JPanel {
-        private Point startClick;
-
-        public WindowMover(JFrame parent) {
-            addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    setCursor(Cursor.getDefaultCursor());
-                }
-
-                @Override
-                public void mousePressed(MouseEvent e) {
-                    getComponentAt(startClick = e.getPoint());
-                }
-            });
-
-            addMouseMotionListener(new MouseMotionAdapter() {
-                @Override
-                public void mouseDragged(MouseEvent e) {
-                    parent.setLocation(
-                            parent.getLocation().x + e.getX() - startClick.x,
-                            parent.getLocation().y + e.getY() - startClick.y
-                    );
-                }
-            });
-        }
-    }
 }
 
 

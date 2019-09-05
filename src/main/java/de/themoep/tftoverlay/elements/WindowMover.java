@@ -1,7 +1,7 @@
 package de.themoep.tftoverlay.elements;
 
 /*
- * TFT-Overlay - TFT-Overlay-Java
+ * TFT-Overlay - tftoverlay
  * Copyright (c) 2019 Max Lee aka Phoenix616 (mail@moep.tv)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -18,48 +18,43 @@ package de.themoep.tftoverlay.elements;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import de.themoep.tftoverlay.TftOverlay;
-import de.themoep.tftoverlay.windows.Overlay;
-import lombok.Setter;
-
-import javax.swing.JLabel;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import java.awt.Cursor;
+import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.function.Consumer;
+import java.awt.event.MouseMotionAdapter;
 
-public class LabelButton extends JLabel {
+public class WindowMover extends JPanel {
+    private Point startClick;
 
-    @Setter private Consumer<MouseEvent> action;
-
-    public LabelButton(String text, Consumer<MouseEvent> action) {
-        super(text);
-        this.action = action;
-
-        setForeground(Overlay.TEXT_COLOR);
-        setBorder(Overlay.BUTTON_BORDER);
-        setBackground(Overlay.BACKGROUND);
-        setOpaque(true);
-        setCursor(TftOverlay.CURSOR_CLICK);
-
+    public WindowMover(JFrame parent) {
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                setBackground(Overlay.GRID_COLOR);
+                setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                setBackground(Overlay.BACKGROUND);
+                setCursor(Cursor.getDefaultCursor());
             }
 
             @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getButton() == MouseEvent.BUTTON1) {
-                    LabelButton.this.action.accept(e);
-                }
+            public void mousePressed(MouseEvent e) {
+                getComponentAt(startClick = e.getPoint());
+            }
+        });
+
+        addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                parent.setLocation(
+                        parent.getLocation().x + e.getX() - startClick.x,
+                        parent.getLocation().y + e.getY() - startClick.y
+                );
             }
         });
     }
-
-
 }
