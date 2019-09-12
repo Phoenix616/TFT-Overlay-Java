@@ -436,7 +436,7 @@ public class Overlay extends JFrame {
         Multimap<TftItem, JLabel> combinationIcons = MultimapBuilder.hashKeys().arrayListValues().build();
 
         for (TftItem item : main.getProvider().getItems().values()) {
-            if (item.getIngredients().isEmpty()) {
+            if (item.getIngredients().isEmpty() && !item.getIngredient().isEmpty()) {
                 JPanel line = new JPanel();
                 line.setBorder(BorderFactory.createEmptyBorder(2, 0, 0, 0));
                 line.setLayout(new BoxLayout(line, BoxLayout.X_AXIS));
@@ -535,10 +535,13 @@ public class Overlay extends JFrame {
         combinedItems.setLayout(new GridLayout(0, spinnerMap.size()));
 
         for (TftItem item : main.getProvider().getItems().values()) {
-            if (item.getIngredients().isEmpty()) {
+            if (item.getIngredients().isEmpty() && !item.getIngredient().isEmpty()) {
                 for (TftItem otherItem : main.getProvider().getItems().values()) {
                     if (otherItem.getIngredients().isEmpty()) {
                         TftItem combinedItem = main.getProvider().getCombination(item, otherItem);
+                        if (combinedItem == null) {
+                            continue;
+                        }
 
                         BufferedImage image = main.getImage(combinedItem.getIconUrl(), ICON_SIZE, ICON_SIZE);
                         JLabel combinedItemIcon = new JLabel(new ImageIcon(image));
@@ -567,7 +570,7 @@ public class Overlay extends JFrame {
 
     private void addItemsPopups(TabbedPanel mainPanel) {
         for (TftItem item : main.getProvider().getItems().values()) {
-            if (item.getIngredients().isEmpty()) {
+            if (item.getIngredients().isEmpty() && !item.getIngredient().isEmpty()) {
 
                 JPanel combinations = new JPanel();
                 combinations.setLayout(new BoxLayout(combinations, BoxLayout.Y_AXIS));
