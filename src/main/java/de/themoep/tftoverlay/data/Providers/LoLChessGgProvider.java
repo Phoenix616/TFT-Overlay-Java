@@ -111,6 +111,9 @@ public class LoLChessGgProvider extends DataProvider {
                 Document champDoc;
                 String champLink = element.attr("href");
                 if (!champLink.equals(link)) {
+                    try {
+                        Thread.sleep((long) (628 + Math.random() * 1000));
+                    } catch (InterruptedException ignored) {}
                     champDoc = Jsoup.connect(champLink).headers(headers).get();
                 } else {
                     champDoc = document;
