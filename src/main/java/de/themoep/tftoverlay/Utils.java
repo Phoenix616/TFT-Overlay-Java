@@ -25,7 +25,6 @@ import javax.swing.JLabel;
 import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
 import java.awt.Color;
-import java.awt.GridLayout;
 import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -49,20 +48,23 @@ public class Utils {
     }
 
     public static void addTooltip(JComponent component, String text) {
-        JPopupMenu tooltip = new JPopupMenu(text);
+        JPopupMenu tooltip = new JPopupMenu();
         tooltip.setBackground(Overlay.HOVER_BACKGROUND);
         tooltip.setBorder(Overlay.BORDER);
-        tooltip.setLayout(new GridLayout(0, 1));
         JLabel label = new JLabel(text);
         label.setForeground(Overlay.TEXT_COLOR);
         tooltip.add(label);
-        tooltip.pack();
         component.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
                 if (component.isShowing()) {
+                    if (!tooltip.isValid()) {
+                        tooltip.validate();
+                        if (!tooltip.isValid() && tooltip.isLightWeightPopupEnabled()) {
+                            tooltip.setLightWeightPopupEnabled(false);
+                        }
+                    }
                     tooltip.show(component, component.getWidth() + 20, component.getHeight() + 20);
-                    tooltip.repaint();
                 }
             }
 
