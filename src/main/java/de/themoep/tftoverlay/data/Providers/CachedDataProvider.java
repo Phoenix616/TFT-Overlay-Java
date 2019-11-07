@@ -20,9 +20,7 @@ package de.themoep.tftoverlay.data.Providers;
 
 import de.themoep.tftoverlay.TftOverlay;
 import de.themoep.tftoverlay.data.TftChampion;
-import de.themoep.tftoverlay.data.TftClass;
 import de.themoep.tftoverlay.data.TftItem;
-import de.themoep.tftoverlay.data.TftOrigin;
 import de.themoep.tftoverlay.data.TftSynergy;
 
 import java.io.File;
@@ -78,32 +76,15 @@ public class CachedDataProvider extends DataProvider {
                 }
             }
         }
-        Files.newDirectoryStream(new File(cacheFolder, "origins").toPath()).forEach(path -> {
+        Files.newDirectoryStream(new File(cacheFolder, "synergies").toPath()).forEach(path -> {
             if (!path.toFile().isFile()) {
                 return;
             }
             Properties props = new Properties();
             try {
                 props.load(new FileReader(path.toFile()));
-                add(new TftOrigin(
-                        props.getProperty("id"),
-                        props.getProperty("name"),
-                        new URL(props.getProperty("iconUrl")),
-                        props.getProperty("description") != null ? props.getProperty("description") : "",
-                        props.getProperty("effects") != null ? props.getProperty("effects") : ""
-                ));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-        Files.newDirectoryStream(new File(cacheFolder, "classes").toPath()).forEach(path -> {
-            if (!path.toFile().isFile()) {
-                return;
-            }
-            Properties props = new Properties();
-            try {
-                props.load(new FileReader(path.toFile()));
-                add(new TftClass(
+                add(new TftSynergy(
+                        props.getProperty("type"),
                         props.getProperty("id"),
                         props.getProperty("name"),
                         new URL(props.getProperty("iconUrl")),
@@ -129,12 +110,7 @@ public class CachedDataProvider extends DataProvider {
                         Arrays.stream(props.getProperty("synergies").split(",")).map(s -> {
                             String[] parts = cleanUp(s).split(":");
                             if (parts.length > 1) {
-                                switch (parts[0]) {
-                                    case "o":
-                                        return getOrigins().get(parts[1]);
-                                    case "c":
-                                        return getClasses().get(parts[1]);
-                                }
+                                return getSynergies().get(parts[1]);
                             }
                             main.getLogger().warning("Invalid synergy " + s + " found for champion " + props.getProperty("id"));
                             return null;

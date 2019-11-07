@@ -45,9 +45,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -166,7 +169,6 @@ public class TftOverlay implements Languaged {
 
     private void loadProvider(boolean forceUpdate) {
         File dataCacheFolder = new File(cacheFolder, "data");
-        dataCacheFolder.mkdirs();
         File cachePropsFile = new File(dataCacheFolder, "cache.properties");
         Properties cacheProps = new Properties();
         if (cachePropsFile.exists()) {
@@ -179,7 +181,7 @@ public class TftOverlay implements Languaged {
             }
         }
         // TODO: Use patch version to check for updates
-        if (!forceUpdate && cacheProps.getProperty("timestamp") != null) {
+        if (!forceUpdate && cacheProps.getProperty("timestamp") != null && dataCacheFolder.exists()) {
             loading.addLine("Using cached data...");
             try {
                 provider = new CachedDataProvider(this, dataCacheFolder);
@@ -189,6 +191,18 @@ public class TftOverlay implements Languaged {
                 e.printStackTrace();
             }
         }
+
+        if (dataCacheFolder.exists()) {
+            try {
+                Files.walk(dataCacheFolder.toPath())
+                        .sorted(Comparator.reverseOrder())
+                        .map(Path::toFile)
+                        .forEach(File::delete);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        dataCacheFolder.mkdirs();
 
         loading.addLine("Loading remote data...");
         provider = new LoLChessGgProvider(this);
@@ -207,11 +221,8 @@ public class TftOverlay implements Languaged {
         loading.addLine("Caching items...");
         provider.getItems().values().forEach(i -> cache(new File(dataCacheFolder, "items"), i));
 
-        loading.addLine("Caching origins...");
-        provider.getOrigins().values().forEach(o -> cache(new File(dataCacheFolder, "origins"), o));
-
-        loading.addLine("Caching classes...");
-        provider.getClasses().values().forEach(c -> cache(new File(dataCacheFolder, "classes"), c));
+        loading.addLine("Caching synergies...");
+        provider.getSynergies().values().forEach(s -> cache(new File(dataCacheFolder, "synergies"), s));
 
         loading.addLine("Caching champions...");
         provider.getChampions().values().forEach(c -> cache(new File(dataCacheFolder, "champions"), c));

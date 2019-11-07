@@ -21,9 +21,8 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import de.themoep.tftoverlay.TftOverlay;
 import de.themoep.tftoverlay.data.TftChampion;
-import de.themoep.tftoverlay.data.TftClass;
 import de.themoep.tftoverlay.data.TftItem;
-import de.themoep.tftoverlay.data.TftOrigin;
+import de.themoep.tftoverlay.data.TftSynergy;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -39,8 +38,7 @@ public abstract class DataProvider {
     private final Table<TftItem, TftItem, TftItem> combinationTable = HashBasedTable.create();
 
     private final Map<String, TftChampion> champions = new LinkedHashMap<>();
-    private final Map<String, TftClass> classes = new LinkedHashMap<>();
-    private final Map<String, TftOrigin> origins = new LinkedHashMap<>();
+    private final Map<String, TftSynergy> synergies = new LinkedHashMap<>();
 
     protected void add(TftItem item) {
         items.put(item.getId(), item);
@@ -50,12 +48,8 @@ public abstract class DataProvider {
         champions.put(champion.getId(), champion);
     }
 
-    protected void add(TftClass tftClass) {
-        classes.put(tftClass.getId(), tftClass);
-    }
-
-    protected void add(TftOrigin origin) {
-        origins.put(origin.getId(), origin);
+    protected void add(TftSynergy synergy) {
+        synergies.put(synergy.getId(), synergy);
     }
 
     public void setupCombinations() {

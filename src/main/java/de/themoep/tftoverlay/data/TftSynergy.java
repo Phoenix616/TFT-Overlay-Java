@@ -29,7 +29,8 @@ import java.util.stream.Collectors;
 
 @Getter
 @RequiredArgsConstructor
-public abstract class TftSynergy implements Cacheable {
+public class TftSynergy implements Cacheable {
+    private final String type;
     private final String id;
     private final String name;
     private final URL iconUrl;
@@ -40,6 +41,7 @@ public abstract class TftSynergy implements Cacheable {
     @Override
     public Map<String, Object> serialize() {
         Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", type);
         map.put("id", id);
         map.put("name", name);
         map.put("iconUrl", iconUrl.toString());
@@ -49,5 +51,7 @@ public abstract class TftSynergy implements Cacheable {
         return map;
     }
 
-    public abstract String getSerId();
+    public String getSerId() {
+        return getType().charAt(0) + ":" + getId();
+    }
 }

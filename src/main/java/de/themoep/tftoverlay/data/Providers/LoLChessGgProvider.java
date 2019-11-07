@@ -20,9 +20,7 @@ package de.themoep.tftoverlay.data.Providers;
 import de.themoep.tftoverlay.TftOverlay;
 import de.themoep.tftoverlay.Utils;
 import de.themoep.tftoverlay.data.TftChampion;
-import de.themoep.tftoverlay.data.TftClass;
 import de.themoep.tftoverlay.data.TftItem;
-import de.themoep.tftoverlay.data.TftOrigin;
 import de.themoep.tftoverlay.data.TftSynergy;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -88,29 +86,19 @@ public class LoLChessGgProvider extends DataProvider {
                     Elements descElements = entryElement.select(".guide-synergy-table__synergy__desc");
                     String description = descElements.isEmpty() ? "" : descElements.get(0).text().trim();
                     String effects = trim(entryElement.select(".guide-synergy-table__synergy__stats").get(0).text());
-                    switch (type) {
-                        case "Origins":
-                            getOrigins().put(id, new TftOrigin(id, img.attr("alt"), getSource(img), description, effects));
-                            break;
-                        case "Classes":
-                            getClasses().put(id, new TftClass(id, img.attr("alt"), getSource(img), description, effects));
-                            break;
-                        default:
-                            System.out.println("Unknown synergy type " + type);
-                            break;
-                    }
+                    add(new TftSynergy(type, id, img.attr("alt"), getSource(img), description, effects));
                 }
             }
 
             main.getLoading().addLine("Loading champions...");
 
             // champions https://lolchess.gg/champions/anivia -> class=guide-champion-table
-            String link = "https://lolchess.gg/champions/aatrox";
+            String link = "https://lolchess.gg/champions/";
             document = Jsoup.connect(link).headers(headers).get();
             for (Element element : document.select(".guide-champion-list .guide-champion-list__content a.guide-champion-list__item[href]")) {
                 Document champDoc;
                 String champLink = element.attr("href");
-                if (!champLink.equals(link)) {
+                if (!champLink.equals(document.location())) {
                     try {
                         Thread.sleep((long) (628 + Math.random() * 1000));
                     } catch (InterruptedException ignored) {}
@@ -128,14 +116,14 @@ public class LoLChessGgProvider extends DataProvider {
                 List<TftSynergy> synergies = new ArrayList<>();
 
                 Elements detailStatsElements = champDoc.select(".guide-champion-detail__stats .guide-champion-detail__stats__row");
-                for (Element originImage : detailStatsElements.get(1).select(".guide-champion-detail__stats__value img[alt]")) {
-                    synergies.add(getOrigins().get(originImage.attr("alt").toLowerCase()));
+                for (Element elementImage : detailStatsElements.get(1).select(".guide-champion-detail__stats__value img[alt]")) {
+                    parseAndAddSynergy(synergies, elementImage);
                 }
                 for (Element classImage : detailStatsElements.get(2).select(".guide-champion-detail__stats__value img[alt]")) {
-                    synergies.add(getClasses().get(classImage.attr("alt").toLowerCase()));
+                    parseAndAddSynergy(synergies, classImage);
                 }
 
-                String id = champLink.substring("https://lolchess.gg/champions/".length());
+                String id = champLink.substring(champLink.lastIndexOf('/') + 1);
 
                 double speed = 0.0;
                 int armor = 0;
@@ -200,6 +188,22 @@ public class LoLChessGgProvider extends DataProvider {
             System.out.println(ex.getMessage());
             ex.printStackTrace();
             JOptionPane.showMessageDialog(null, ex.getMessage(), "An error occured loading data", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void parseAndAddSynergy(List<TftSynergy> synergies, Element elementImage) {
+        String alt = elementImage.attr("alt");
+        TftSynergy synergy = getSynergies().get(alt.toLowerCase());
+        if (synergy == null) {
+            for (TftSynergy s : getSynergies().values()) {
+                if (s.getName().equalsIgnoreCase(alt)) {
+                    synergy = s;
+                    break;
+                }
+            }
+        }
+        if (synergy != null) {
+            synergies.add(synergy);
         }
     }
 

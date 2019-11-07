@@ -21,9 +21,7 @@ import com.google.common.collect.MultimapBuilder;
 import de.themoep.tftoverlay.TftOverlay;
 import de.themoep.tftoverlay.Utils;
 import de.themoep.tftoverlay.data.TftChampion;
-import de.themoep.tftoverlay.data.TftClass;
 import de.themoep.tftoverlay.data.TftItem;
-import de.themoep.tftoverlay.data.TftOrigin;
 import de.themoep.tftoverlay.data.TftSynergy;
 import de.themoep.tftoverlay.elements.LabelButton;
 import de.themoep.tftoverlay.elements.LabelCheckbox;
@@ -48,7 +46,6 @@ import javax.swing.UIManager;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.ColorUIResource;
-import java.awt.AWTEvent;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Component;
@@ -58,8 +55,6 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
-import java.awt.Toolkit;
-import java.awt.event.AWTEventListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
@@ -67,6 +62,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -177,21 +173,29 @@ public class Overlay extends JFrame {
         TabbedPanel champPopup = new TabbedPanel(mainPanel.getParent(), false, true);
         champPopup.setBackground(HOVER_BACKGROUND);
 
+        Multimap<String, TftSynergy> synergyTypes = MultimapBuilder.hashKeys().arrayListValues().build();
+        for (TftSynergy synergy : main.getProvider().getSynergies().values()) {
+            synergyTypes.put(synergy.getType(), synergy);
+        }
+
         // -- Champions panel --
-        addChampionsGridPopup(champPopup);
+        addChampionsGridPopup(champPopup, synergyTypes);
         addChampionsListPopup(champPopup);
 
         // -- Synergies --
-
-        addSynergyPopup(champPopup, main.getProvider().getClasses().values(), main.getLang("classes"), "classes");
-        addSynergyPopup(champPopup, main.getProvider().getOrigins().values(), main.getLang("origins"), "origins");
+        for (String synergyName : synergyTypes.keySet()) {
+            addSynergyPopup(champPopup, synergyTypes.get(synergyName), synergyName);
+        }
 
         mainPanel.addEntry("champions", getCharButton("C"), champPopup);
     }
 
-    private void addChampionsGridPopup(TabbedPanel parent) {
+    private void addChampionsGridPopup(TabbedPanel parent, Multimap<String, TftSynergy> synergyTypes) {
         JPanel popup = new JPanel();
-        popup.setLayout(new GridLayout(main.getProvider().getOrigins().size() + 1, main.getProvider().getClasses().size() + 1));
+        Iterator<Collection<TftSynergy>> it = synergyTypes.asMap().values().iterator();
+        Collection<TftSynergy> synOnes = it.next();
+        Collection<TftSynergy> synTwos = it.next();
+        popup.setLayout(new GridLayout(synTwos.size() + 1, synOnes.size() + 1));
         popup.setForeground(TEXT_COLOR);
         popup.setBackground(new Color(0, 0, 0, 0));
         JPanel cornerCell = new JPanel() {
@@ -206,56 +210,59 @@ public class Overlay extends JFrame {
         cornerCell.setForeground(SECONDARY_TEXT_COLOR);
         cornerCell.setLayout(new BoxLayout(cornerCell, BoxLayout.Y_AXIS));
 
-        JPanel classesContainer = new JPanel();
-        classesContainer.setLayout(new BoxLayout(classesContainer, BoxLayout.X_AXIS));
-        Utils.addChild(cornerCell, classesContainer);
-        classesContainer.add(Box.createHorizontalGlue());
-        Utils.addChild(classesContainer, new JLabel(main.getLang("classes")));
+        JPanel synOneContainer = new JPanel();
+        synOneContainer.setLayout(new BoxLayout(synOneContainer, BoxLayout.X_AXIS));
+        Utils.addChild(cornerCell, synOneContainer);
+        synOneContainer.add(Box.createHorizontalGlue());
+        Utils.addChild(synOneContainer, new JLabel(synOnes.iterator().next().getType()));
 
-        JPanel originsContainer = new JPanel();
-        originsContainer.setLayout(new BoxLayout(originsContainer, BoxLayout.X_AXIS));
-        Utils.addChild(cornerCell, originsContainer);
-        Utils.addChild(originsContainer, new JLabel(main.getLang("origins")));
-        originsContainer.add(Box.createHorizontalGlue());
+        JPanel synTwoContainer = new JPanel();
+        synTwoContainer.setLayout(new BoxLayout(synTwoContainer, BoxLayout.X_AXIS));
+        Utils.addChild(cornerCell, synTwoContainer);
+        Utils.addChild(synTwoContainer, new JLabel(synTwos.iterator().next().getType()));
+        synTwoContainer.add(Box.createHorizontalGlue());
 
-        for (TftClass tftClass : main.getProvider().getClasses().values()) {
-            JLabel classLabel = new JLabel(tftClass.getName(), new ImageIcon(main.getImage(tftClass.getIconUrl(), 16, 16)), JLabel.CENTER);
-            classLabel.setHorizontalTextPosition(JLabel.CENTER);
-            classLabel.setVerticalTextPosition(JLabel.TOP);
-            Utils.addTooltip(classLabel, main.getLang("class-hover",
-                    "name", tftClass.getName(),
-                    "iconUrl", tftClass.getIconUrl().toExternalForm(),
-                    "iconPath", "file:/" + main.getCachedImageFile(tftClass.getIconUrl(), 16, 16).getAbsolutePath(),
-                    "desc", tftClass.getDescription() + (!tftClass.getDescription().isEmpty() && !tftClass.getEffects().isEmpty() ? "<br>" : ""),
-                    "effects", tftClass.getEffects(),
-                    "champions", tftClass.getChampions().stream().map(TftChampion::getName).collect(Collectors.joining(", ")),
-                    "champion-count", String.valueOf(tftClass.getChampions().size())
+        for (TftSynergy synergy : synOnes) {
+            JLabel synOneLabel = new JLabel(synergy.getName(), new ImageIcon(main.getImage(synergy.getIconUrl(), 16, 16)), JLabel.CENTER);
+            synOneLabel.setHorizontalTextPosition(JLabel.CENTER);
+            synOneLabel.setVerticalTextPosition(JLabel.TOP);
+            Utils.addTooltip(synOneLabel, main.getLang("synergy-hover",
+                    "type", synergy.getType(),
+                    "name", synergy.getName(),
+                    "iconUrl", synergy.getIconUrl().toExternalForm(),
+                    "iconPath", "file:/" + main.getCachedImageFile(synergy.getIconUrl(), 16, 16).getAbsolutePath(),
+                    "desc", synergy.getDescription() + (!synergy.getDescription().isEmpty() && !synergy.getEffects().isEmpty() ? "<br>" : ""),
+                    "effects", synergy.getEffects(),
+                    "champions", synergy.getChampions().stream().map(TftChampion::getName).collect(Collectors.joining(", ")),
+                    "champion-count", String.valueOf(synergy.getChampions().size())
             ));
-            classLabel.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, new Color(27, 27, 27)));
-            Utils.addChild(popup, classLabel);
+            synOneLabel.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, new Color(27, 27, 27)));
+            Utils.addChild(popup, synOneLabel);
         }
 
-        for (TftOrigin origin : main.getProvider().getOrigins().values()) {
-            JLabel originLabel = new JLabel(origin.getName(), new ImageIcon(main.getImage(origin.getIconUrl(), 16, 16)), JLabel.TRAILING);
-            originLabel.setHorizontalTextPosition(JLabel.LEADING);
-            Utils.addTooltip(originLabel, main.getLang("origin-hover",
-                    "name", origin.getName(),
-                    "iconUrl", origin.getIconUrl().toExternalForm(),
-                    "iconPath", "file:/" + main.getCachedImageFile(origin.getIconUrl(), 16, 16).getAbsolutePath(),
-                    "desc", origin.getDescription() + (!origin.getDescription().isEmpty() && !origin.getEffects().isEmpty() ? "<br>" : ""),
-                    "effects", origin.getEffects(),
-                    "champions", origin.getChampions().stream().map(TftChampion::getName).collect(Collectors.joining(", ")),
-                    "champion-count", String.valueOf(origin.getChampions().size())
+        for (TftSynergy synTwo : synTwos) {
+            JLabel synTwolabel = new JLabel(synTwo.getName(), new ImageIcon(main.getImage(synTwo.getIconUrl(), 16, 16)), JLabel.CENTER);
+            synTwolabel.setHorizontalTextPosition(JLabel.CENTER);
+            synTwolabel.setVerticalTextPosition(JLabel.TOP);
+            Utils.addTooltip(synTwolabel, main.getLang("synergy-hover",
+                    "type", synTwo.getType(),
+                    "name", synTwo.getName(),
+                    "iconUrl", synTwo.getIconUrl().toExternalForm(),
+                    "iconPath", "file:/" + main.getCachedImageFile(synTwo.getIconUrl(), 16, 16).getAbsolutePath(),
+                    "desc", synTwo.getDescription() + (!synTwo.getDescription().isEmpty() && !synTwo.getEffects().isEmpty() ? "<br>" : ""),
+                    "effects", synTwo.getEffects(),
+                    "champions", synTwo.getChampions().stream().map(TftChampion::getName).collect(Collectors.joining(", ")),
+                    "champion-count", String.valueOf(synTwo.getChampions().size())
             ));
-            originLabel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(27, 27, 27)));
-            Utils.addChild(popup, originLabel);
+            synTwolabel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(27, 27, 27)));
+            Utils.addChild(popup, synTwolabel);
 
-            for (TftClass tftClass : main.getProvider().getClasses().values()) {
+            for (TftSynergy synOne : synOnes) {
                 JPanel champCell = new JPanel();
                 champCell.setBorder(BorderFactory.createMatteBorder(1, 1, 0, 0, GRID_COLOR));
 
-                List<TftChampion> championList = tftClass.getChampions().stream()
-                        .filter(c -> c.getSynergies().contains(origin))
+                List<TftChampion> championList = synOne.getChampions().stream()
+                        .filter(c -> c.getSynergies().contains(synTwo))
                         .filter(c -> !c.isPbe() || PBE)
                         .sorted(Comparator.comparingInt(TftChampion::getCost))
                         .collect(Collectors.toList());
@@ -365,7 +372,7 @@ public class Overlay extends JFrame {
         parent.addEntry(main.getLang("list"), getTextButton(main.getLang("list"), FONT), popup);
     }
 
-    private void addSynergyPopup(TabbedPanel parent, Collection<? extends TftSynergy> synergies, String iconChar, String key) {
+    private void addSynergyPopup(TabbedPanel parent, Collection<? extends TftSynergy> synergies, String typeName) {
         JPanel popup = new JPanel();
         popup.setLayout(new BoxLayout(popup, BoxLayout.Y_AXIS));
         popup.setBackground(new Color(0, 0, 0, 0));
@@ -380,7 +387,7 @@ public class Overlay extends JFrame {
                     .sorted(Comparator.comparingInt(TftChampion::getCost))
                     .collect(Collectors.toList());
 
-            JLabel infoLabel = new JLabel(main.getLang(key + "-info",
+            JLabel infoLabel = new JLabel(main.getLang("synergy-info",
                     "name", synergy.getName(),
                     "desc", Utils.addHilights(synergy.getDescription()) + (!synergy.getDescription().isEmpty() && !synergy.getEffects().isEmpty() ? "<br>" : ""),
                     "effects", Utils.addHilights(synergy.getEffects()),
@@ -406,7 +413,7 @@ public class Overlay extends JFrame {
             Utils.addChild(popup, panel);
         }
 
-        parent.addEntry(main.getLang(key), getTextButton(iconChar, FONT), popup);
+        parent.addEntry(typeName, getTextButton(typeName, FONT), popup);
     }
 
     private void addItemBuilderPopup(TabbedPanel mainPanel) {
