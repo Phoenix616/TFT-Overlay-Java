@@ -7,7 +7,7 @@
 
     <groupId>de.themoep</groupId>
     <artifactId>tftoverlay</artifactId>
-    <version>1.1-SNAPSHOT</version>
+    <version>1.1.1-SNAPSHOT</version>
     <name>TFT-Overlay</name>
     <description>Overlay with information for Teamfight Tactics</description>
 

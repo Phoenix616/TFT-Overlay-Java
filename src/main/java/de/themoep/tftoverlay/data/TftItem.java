@@ -37,7 +37,13 @@ public class TftItem implements Cacheable {
     private final String name;
     private final URL iconUrl;
     private final String description;
+    /**
+     * Items this item is an ingredient to if base item
+     */
     private final Set<TftItem> ingredient = new LinkedHashSet<>();
+    /**
+     * Items that are ingredients to craft this item
+     */
     private final List<TftItem> ingredients = new ArrayList<>();
     private final List<TftChampion> champions = new ArrayList<>();
 

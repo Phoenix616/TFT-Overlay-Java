@@ -20,6 +20,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import de.themoep.tftoverlay.TftOverlay;
 import de.themoep.tftoverlay.Utils;
+import de.themoep.tftoverlay.data.Cacheable;
 import de.themoep.tftoverlay.data.TftChampion;
 import de.themoep.tftoverlay.data.TftItem;
 import de.themoep.tftoverlay.data.TftSynergy;
@@ -41,6 +42,7 @@ import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
@@ -55,6 +57,8 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
@@ -67,6 +71,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class Overlay extends JFrame {
@@ -161,7 +168,7 @@ public class Overlay extends JFrame {
 
         // --- Items ---
 
-        addItemBuilderPopup(mainPanel);
+        addItemsPopup(mainPanel);
         addItemsPopups(mainPanel);
 
         Utils.addChild(content, mainPanel);
@@ -180,7 +187,45 @@ public class Overlay extends JFrame {
 
         // -- Champions panel --
         addChampionsGridPopup(champPopup, synergyTypes);
-        addChampionsListPopup(champPopup);
+        addListPopup(main.getProvider().getChampions(), champPopup, 6, (input, c) -> {
+            if (input.isEmpty() || c.getId().startsWith(input))
+                return true;
+
+            if (input.length() > 2) {
+                if (c.getId().contains(input))
+                    return true;
+
+                if (c.getSpell() != null)
+                    if (c.getSpell().getEffect().toLowerCase().contains(input) || c.getSpell().getDescription().toLowerCase().contains(input))
+                        return true;
+
+                for (TftItem item : c.getRecommendedItems())
+                    if (item.getId().contains(input))
+                        return true;
+            }
+
+            return false;
+        }, (c, entryPanel) -> {
+            JLabel icon = getChampionIcon(c, 36);
+            entryPanel.setToolTipText(icon.getToolTipText());
+            entryPanel.add(icon);
+
+            Utils.addChild(entryPanel, new JLabel(main.getLang("champion-info", getReplacements(c))));
+            Utils.addChild(entryPanel, new JLabel(main.getLang("spell-info", getReplacements(c))));
+
+            if (!c.getRecommendedItems().isEmpty()) {
+                JPanel itemsPanel = new JPanel();
+                itemsPanel.setLayout(new BoxLayout(itemsPanel, BoxLayout.Y_AXIS));
+                Utils.addChild(entryPanel, itemsPanel);
+                Utils.addChild(itemsPanel, new JLabel(main.getLang("recommended-items")));
+                c.getRecommendedItems().stream().sorted(Comparator.comparing(TftItem::getId)).forEach(item -> {
+                    JLabel itemIcon = new JLabel(item.getName(), new ImageIcon(main.getImage(item.getIconUrl(), 24, 24)), SwingConstants.LEADING);
+                    Utils.addTooltip(itemIcon, main.getLang("item-hover-short", getReplacements(item)));
+                    Utils.addChild(itemsPanel, itemIcon);
+                    itemIcon.setForeground(SECONDARY_TEXT_COLOR);
+                });
+            }
+        });
 
         // -- Synergies --
         for (String synergyName : synergyTypes.keySet()) {
@@ -282,13 +327,15 @@ public class Overlay extends JFrame {
         parent.addEntry(main.getLang("grid"), getTextButton(main.getLang("grid"), FONT), popup, true);
     }
 
-    private void addChampionsListPopup(TabbedPanel parent) {
+    private <T extends Cacheable> void addListPopup(Map<String, T> entries, TabbedPanel parent,
+                                                    int show, BiFunction<String, T, Boolean> searchFilter,
+                                                    BiConsumer<T, JPanel> entryCreator) {
         JPanel popup = new JPanel();
         popup.setLayout(new BoxLayout(popup, BoxLayout.Y_AXIS));
         popup.setForeground(TEXT_COLOR);
         popup.setBackground(new Color(0, 0, 0, 0));
 
-        Map<TftChampion, JPanel> champPanels = new LinkedHashMap<>();
+        Map<T, JPanel> entryPanels = new LinkedHashMap<>();
 
         JPanel header = new JPanel();
         header.setLayout(new BoxLayout(header, BoxLayout.X_AXIS));
@@ -296,15 +343,15 @@ public class Overlay extends JFrame {
 
         JTextField searchBar = new JTextField();
         searchBar.setToolTipText(main.getLang("search"));
-        searchBar.addActionListener(e -> {
-            Set<String> found = main.getProvider().getChampions().values().stream()
-                    .filter(c -> searchBar.getText().isEmpty() || c.getId().contains(searchBar.getText().toLowerCase()))
-                    .map(TftChampion::getId)
+        Consumer<String> inputHandler = input -> {
+            Set<String> found = entries.values().stream()
+                    .filter(entry -> searchFilter.apply(input, entry))
+                    .map(Cacheable::getId)
                     .collect(Collectors.toSet());
 
             int shown = 0;
-            for (Map.Entry<TftChampion, JPanel> entry : champPanels.entrySet()) {
-                if (shown < 6 && (found.isEmpty() || found.contains(entry.getKey().getId()))) {
+            for (Map.Entry<T, JPanel> entry : entryPanels.entrySet()) {
+                if (shown < show && (found.isEmpty() || found.contains(entry.getKey().getId()))) {
                     entry.getValue().setVisible(true);
                     shown++;
                 } else {
@@ -312,60 +359,49 @@ public class Overlay extends JFrame {
                 }
                 pack();
             }
+        };
+        searchBar.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                SwingUtilities.invokeLater(() -> inputHandler.accept(searchBar.getText().toLowerCase()));
+            }
         });
         searchBar.setBorder(BORDER);
         searchBar.setFont(HUGE_FONT);
         Utils.addChild(header, searchBar);
 
-        LabelButton searchButton = new LabelButton(main.getLang("search"), c -> searchBar.postActionEvent());
+        LabelButton searchButton = new LabelButton(main.getLang("search"), c -> inputHandler.accept(searchBar.getText().toLowerCase()));
         searchButton.setFont(HUGE_FONT);
         header.add(searchButton);
 
         searchBar.setBackground(BACKGROUND);
 
-        JPanel champList = new JPanel();
-        champList.setLayout(new BoxLayout(champList, BoxLayout.Y_AXIS));
-        Utils.addChild(popup, champList);
+        JPanel entryList = new JPanel();
+        entryList.setLayout(new BoxLayout(entryList, BoxLayout.Y_AXIS));
+        Utils.addChild(popup, entryList);
         //champList.setBackground(BACKGROUND);
         //champList.setForeground(TEXT_COLOR);
         //JScrollPane champScroll = new JScrollPane(champList);
         //champScroll.setPreferredSize(new Dimension(420, 640));
         //Utils.addChild(popup, champScroll);
 
-        main.getProvider().getChampions().values().stream().sorted(Comparator.comparing(TftChampion::getId)).forEachOrdered(c -> {
-            JPanel champPanel = new JPanel();
-            champPanel.setLayout(new FlowLayout(FlowLayout.LEADING));
-            champPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, GRID_COLOR));
-            Utils.addChild(champList, champPanel);
+        entries.values().stream().sorted(Comparator.comparing(Cacheable::getId)).forEach(c -> {
+            JPanel entryPanel = new JPanel();
+            entryPanel.setLayout(new FlowLayout(FlowLayout.LEADING));
+            entryPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, GRID_COLOR));
+            Utils.addChild(entryList, entryPanel);
 
-            JLabel icon = getChampionIcon(c, 36);
-            champPanel.setToolTipText(icon.getToolTipText());
-            champPanel.add(icon);
+            entryCreator.accept(c, entryPanel);
 
-            Utils.addChild(champPanel, new JLabel(main.getLang("champion-info", getReplacements(c))));
-            Utils.addChild(champPanel, new JLabel(main.getLang("spell-info", getReplacements(c))));
-
-            if (!c.getRecommendedItems().isEmpty()) {
-                JPanel itemsPanel = new JPanel();
-                itemsPanel.setLayout(new BoxLayout(itemsPanel, BoxLayout.Y_AXIS));
-                Utils.addChild(champPanel, itemsPanel);
-                Utils.addChild(itemsPanel, new JLabel(main.getLang("recommended-items")));
-                for (TftItem item : c.getRecommendedItems()) {
-                    JLabel itemIcon = new JLabel(item.getName(), new ImageIcon(main.getImage(item.getIconUrl(), 24, 24)), SwingConstants.LEADING);
-                    Utils.addTooltip(itemIcon, main.getLang("item-hover-short", getReplacements(item)));
-                    Utils.addChild(itemsPanel, itemIcon);
-                    itemIcon.setForeground(SECONDARY_TEXT_COLOR);
-                }
-            }
-
-            champPanels.put(c, champPanel);
+            entryPanels.put(c, entryPanel);
         });
 
         int shown = 0;
-        for (JPanel panel : champPanels.values()) {
-            shown++;
-            if (shown > 5) {
-                panel.setVisible(false);
+        for (Map.Entry<T, JPanel> entry : entryPanels.entrySet()) {
+            if (shown < show && searchFilter.apply("", entry.getKey())) {
+                shown++;
+            } else {
+                entry.getValue().setVisible(false);
             }
         }
 
@@ -416,7 +452,97 @@ public class Overlay extends JFrame {
         parent.addEntry(typeName, getTextButton(typeName, FONT), popup);
     }
 
-    private void addItemBuilderPopup(TabbedPanel mainPanel) {
+    private void addItemsPopup(TabbedPanel mainPanel) {
+        TabbedPanel itemsPopup = new TabbedPanel(mainPanel.getParent(), false, true);
+        itemsPopup.setBackground(HOVER_BACKGROUND);
+
+        // -- Items panel --
+        addItemBuilderPopup(itemsPopup);
+        addListPopup(main.getProvider().getItems(), itemsPopup, 10, (input, i) -> {
+            if (input.isEmpty())
+                return i.getIngredients().isEmpty();
+
+            if (i.getId().startsWith(input))
+                return true;
+
+            if (input.length() > 2) {
+
+                for (TftItem ingredient : i.getIngredients()) {
+                    if (ingredient.getId().contains(input))
+                        return true;
+                }
+
+                for (TftItem ingredient : i.getIngredient()) {
+                    if (ingredient.getId().contains(input))
+                        return true;
+                }
+                if (i.getId().contains(input))
+                    return true;
+
+                if (i.getDescription().toLowerCase().contains(input))
+                    return true;
+
+                for (TftChampion champion : i.getChampions())
+                    if (champion.getId().contains(input))
+                        return true;
+            }
+
+            return false;
+        }, (item, entryPanel) -> {
+            JLabel itemIcon = new JLabel(new ImageIcon(main.getImage(item.getIconUrl(), 36, 36)));
+            itemIcon.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(0, 0, 0, 16), COLORED_BORDER));
+            String[] replacements = getReplacements(item);
+            entryPanel.add(itemIcon);
+
+            Utils.addChild(entryPanel, new JLabel(main.getLang("item-info", replacements)));
+
+            if (!item.getIngredient().isEmpty()) {
+                JPanel itemsPanel = new JPanel();
+                itemsPanel.setLayout(new BoxLayout(itemsPanel, BoxLayout.Y_AXIS));
+                Utils.addChild(entryPanel, itemsPanel);
+                Utils.addChild(itemsPanel, new JLabel(main.getLang("item-ingredient-for")));
+
+                JPanel itemsIcons = new JPanel();
+                Utils.addChild(itemsPanel, itemsIcons);
+                itemsIcons.setLayout(new BoxLayout(itemsIcons, BoxLayout.X_AXIS));
+
+                item.getIngredient().stream().sorted(Comparator.comparing(TftItem::getId)).forEach(craftable -> {
+                    JLabel ingredientIcon = new JLabel(new ImageIcon(main.getImage(craftable.getIconUrl(), 24, 24)));
+                    Utils.addTooltip(ingredientIcon, main.getLang("item-hover", getReplacements(craftable)));
+                    itemsIcons.add(ingredientIcon);
+                });
+            }
+            if (!item.getIngredients().isEmpty()) {
+                JPanel itemsPanel = new JPanel();
+                itemsPanel.setLayout(new BoxLayout(itemsPanel, BoxLayout.Y_AXIS));
+                Utils.addChild(entryPanel, itemsPanel);
+                Utils.addChild(itemsPanel, new JLabel(main.getLang("item-ingredients")));
+                for (TftItem ingredient : item.getIngredients()) {
+                    JLabel ingredientIcon = new JLabel(ingredient.getName(), new ImageIcon(main.getImage(ingredient.getIconUrl(), 24, 24)), SwingConstants.LEADING);
+                    Utils.addTooltip(ingredientIcon, main.getLang("item-hover-short", getReplacements(ingredient)));
+                    Utils.addChild(itemsPanel, ingredientIcon);
+                    ingredientIcon.setForeground(SECONDARY_TEXT_COLOR);
+                }
+            }
+            if (!item.getChampions().isEmpty()) {
+                JPanel champPanel = new JPanel();
+                champPanel.setLayout(new BoxLayout(champPanel, BoxLayout.Y_AXIS));
+                Utils.addChild(entryPanel, champPanel);
+                Utils.addChild(champPanel, new JLabel(main.getLang("recommended-champs-title")));
+
+                JPanel champIcons = new JPanel();
+                Utils.addChild(champPanel, champIcons);
+                champIcons.setLayout(new GridLayout(item.getChampions().size() > 3 ? 2 : 1, 0));
+                for (TftChampion champion : item.getChampions()) {
+                    champIcons.add(getChampionIcon(champion, 24));
+                }
+            }
+        });
+
+        mainPanel.addEntry("items", getCharButton("I"), itemsPopup);
+    }
+
+    private void addItemBuilderPopup(TabbedPanel parent) {
         JPanel popup = new JPanel();
         popup.setLayout(new BoxLayout(popup, BoxLayout.X_AXIS));
         popup.setForeground(TEXT_COLOR);
@@ -572,7 +698,7 @@ public class Overlay extends JFrame {
 
         Utils.addChild(itemList, new LabelButton(main.getLang("reset"), e -> spinnerMap.values().forEach(s -> s.setValue(0))));
 
-        mainPanel.addEntry(main.getLang("item-builder"), getCharButton("I"), popup);
+        parent.addEntry(main.getLang("item-builder"), getTextButton(main.getLang("item-builder"), FONT), popup, true);
     }
 
     private void addItemsPopups(TabbedPanel mainPanel) {

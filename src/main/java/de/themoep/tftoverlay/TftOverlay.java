@@ -79,6 +79,7 @@ public class TftOverlay implements Languaged {
     private Map<String, BufferedImage> imageCache = new HashMap<>();
 
     public static void main(String[] args) {
+        long startTime = System.currentTimeMillis();
         try {
             HASHING = MessageDigest.getInstance("MD5");
         } catch (NoSuchAlgorithmException e) {
@@ -112,6 +113,7 @@ public class TftOverlay implements Languaged {
         }
 
         instance = new TftOverlay();
+        System.out.println("Took " + (System.currentTimeMillis() - startTime) + "ms to start!");
     }
 
     private TftOverlay() {
