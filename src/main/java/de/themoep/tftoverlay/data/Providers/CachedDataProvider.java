@@ -135,12 +135,16 @@ public class CachedDataProvider extends DataProvider {
                         props.getProperty("pbe").equals("true")
                 );
                 for (String s : props.getProperty("recommendedItems").split(",")) {
-                    TftItem item = getItems().get(cleanUp(s));
+                    String id = cleanUp(s);
+                    if (id.isEmpty()) {
+                        continue;
+                    }
+                    TftItem item = getItems().get(id);
                     if (item != null) {
                         champion.getRecommendedItems().add(item);
                         item.getChampions().add(champion);
                     } else {
-                        main.getLogger().warning("No item with ID " + s + " found for champion " + champion.getId());
+                        main.getLogger().warning("No item with ID " + id + " found for champion " + champion.getId());
                     }
                 }
                 for (TftSynergy synergy : champion.getSynergies()) {
