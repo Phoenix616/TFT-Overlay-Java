@@ -80,9 +80,11 @@ public class TftChampion implements Cacheable {
                 return new Color(32, 122, 199);
             case 4:
                 return new Color(196, 64, 218);
+            case 5:
+                return new Color(255, 185, 59);
         }
-        if (cost > 4) {
-            return new Color(255, 185, 59);
+        if (cost > 5) {
+            return new Color(255, 255, 255);
         }
         return new Color(0, 0, 0);
     }
