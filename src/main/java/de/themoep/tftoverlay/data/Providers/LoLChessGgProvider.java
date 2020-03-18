@@ -134,7 +134,7 @@ public class LoLChessGgProvider extends DataProvider {
                     speed = Double.parseDouble(trim(statsElements.get(4).select(".guide-champion-detail__base-stat__value").get(0).text()));
                     armor = Integer.parseInt(trim(statsElements.get(5).select(".guide-champion-detail__base-stat__value").get(0).text()));
                     magicResistance = Integer.parseInt(trim(statsElements.get(6).select(".guide-champion-detail__base-stat__value").get(0).text()));
-                    int rangeSubLength = "https://cdn.lolchess.gg/images/icon/ico-attack-distance-0".length();
+                    int rangeSubLength = "https://cdn.lolchess.gg/images/tft/attack-distance/set3/ico_attack_distance30".length();
                     URL imgSource = getSource(statsElements.get(3).select(".guide-champion-detail__base-stat__value img").get(0));
                     range = Integer.parseInt(imgSource.toString().substring(rangeSubLength, rangeSubLength + 1));
                     cost = Integer.parseInt(element.select(".guide-champion-item .cost").get(0).text().substring(1));
